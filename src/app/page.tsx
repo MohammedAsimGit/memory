@@ -31,11 +31,14 @@ export default function UnlockPage() {
       if (res.ok && data.token) {
         setAuth(data.token);
         router.push('/home');
-      } else {
+      } else if (res.status === 401) {
         setError('Incorrect Password');
+      } else {
+        setError(data.error || 'Something went wrong. Please try again.');
+        console.error('Auth error:', data);
       }
     } catch {
-      setError('Incorrect Password');
+      setError('Unable to connect. Check your internet connection.');
     } finally {
       setLoading(false);
     }
