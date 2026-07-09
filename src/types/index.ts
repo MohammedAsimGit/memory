@@ -1,0 +1,120 @@
+export interface Memory {
+  _id: string;
+  title: string;
+  description: string;
+  date: string;
+  time?: string;
+  location?: string;
+  mood?: string;
+  weather?: string;
+  images: string[];
+  videos: string[];
+  voiceNotes: string[];
+  music?: MusicAttachment;
+  tags: string[];
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MusicAttachment {
+  title: string;
+  artist: string;
+  platform: 'spotify' | 'youtube' | 'apple';
+  url: string;
+  embedUrl?: string;
+}
+
+export interface JournalEntry {
+  _id: string;
+  date: string;
+  time: string;
+  content: string;
+  mood?: string;
+  photo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SpecialDay {
+  _id: string;
+  title: string;
+  date: string;
+  type: 'first-meet' | 'first-date' | 'anniversary' | 'birthday' | 'trip' | 'custom';
+  description?: string;
+  icon: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Letter {
+  _id: string;
+  title: string;
+  content: string;
+  unlockDate: string;
+  isLocked: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimeCapsule {
+  _id: string;
+  title: string;
+  content: string;
+  images: string[];
+  unlockDate: string;
+  isLocked: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MusicTrack {
+  _id: string;
+  title: string;
+  artist: string;
+  platform: 'spotify' | 'youtube' | 'apple';
+  url: string;
+  embedUrl?: string;
+  isFavorite: boolean;
+  memoryId?: string;
+  createdAt: string;
+}
+
+export interface Comment {
+  _id: string;
+  memoryId: string;
+  content: string;
+  author: string;
+  createdAt: string;
+}
+
+export interface GalleryImage {
+  _id: string;
+  url: string;
+  thumbnailUrl: string;
+  memoryId?: string;
+  album: string;
+  tags: string[];
+  createdAt: string;
+}
+
+export interface Settings {
+  _id?: string;
+  passwordHash: string;
+  darkMode: boolean;
+  blueTheme: boolean;
+  partnerName1: string;
+  partnerName2: string;
+  relationshipStartDate: string;
+}
+
+export interface Stats {
+  totalMemories: number;
+  totalJournalEntries: number;
+  totalPhotos: number;
+  totalSpecialDays: number;
+  daysTogether: number;
+  totalLetters: number;
+  totalCapsules: number;
+}

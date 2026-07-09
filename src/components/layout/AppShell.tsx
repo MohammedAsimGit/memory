@@ -1,0 +1,26 @@
+'use client';
+
+import { motion, AnimatePresence } from 'framer-motion';
+import BottomNav from './BottomNav';
+import CloudBackground from './CloudBackground';
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#EAF6FF] via-[#EAF6FF]/70 to-white relative">
+      <CloudBackground />
+      <AnimatePresence mode="wait">
+        <motion.main
+          key="content"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.25 }}
+          className="pb-24 pt-4 px-4 max-w-2xl mx-auto relative z-10"
+        >
+          {children}
+        </motion.main>
+      </AnimatePresence>
+      <BottomNav />
+    </div>
+  );
+}
