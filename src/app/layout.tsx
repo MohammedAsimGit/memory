@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ThemeProvider from "@/components/layout/ThemeProvider";
+import { ThemeScript } from "./theme-script";
 
 export const metadata: Metadata = {
   title: "Our Story",
@@ -31,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
@@ -43,9 +45,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Our Story" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#2196F3" />
+        <ThemeScript />
       </head>
-      <body className="min-h-screen bg-[#EAF6FF] text-slate-800 font-sans antialiased overflow-x-hidden">
-        {children}
+      <body className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)] font-sans antialiased overflow-x-hidden transition-colors duration-300">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

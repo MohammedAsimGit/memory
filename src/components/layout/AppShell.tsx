@@ -6,7 +6,7 @@ import CloudBackground from './CloudBackground';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#EAF6FF] via-[#EAF6FF]/70 to-white relative">
+    <div className="min-h-screen bg-gradient-to-b from-[#EAF6FF] dark:from-slate-900 via-[#EAF6FF]/70 dark:via-slate-900/70 to-white dark:to-slate-950 relative">
       <CloudBackground />
       <AnimatePresence mode="wait">
         <motion.main

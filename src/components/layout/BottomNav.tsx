@@ -74,7 +74,7 @@ export default function BottomNav() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40">
-      <div className="bg-white/70 backdrop-blur-2xl border-t border-white/50 shadow-[0_-8px_30px_rgba(0,0,0,0.05)] pb-safe">
+      <div className="bg-white/70 dark:bg-slate-900/80 backdrop-blur-2xl border-t border-white/50 dark:border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.3)] pb-safe">
         <div className="flex items-center justify-around px-2 py-2 max-w-lg mx-auto">
           {tabs.map((tab) => {
             const isActive = currentTab === tab.id;
@@ -90,7 +90,7 @@ export default function BottomNav() {
                 {isActive && (
                   <motion.div
                     layoutId="tab-bg"
-                    className="absolute inset-0 bg-sky-100 rounded-2xl -z-10"
+                    className="absolute inset-0 bg-sky-100 dark:bg-sky-900/40 rounded-2xl -z-10"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
@@ -117,7 +117,7 @@ export default function BottomNav() {
           })}
         </div>
       </div>
-      <div className="h-safe-bottom bg-white/70 backdrop-blur-2xl" />
+      <div className="h-safe-bottom bg-white/70 dark:bg-slate-900/80 backdrop-blur-2xl" />
     </div>
   );
 }

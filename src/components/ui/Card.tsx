@@ -19,7 +19,7 @@ export default function GlassCard({ children, className, onClick, padding = 'md'
       whileTap={onClick ? { scale: 0.98 } : undefined}
       onClick={onClick}
       className={cn(
-        'bg-white/80 backdrop-blur-xl rounded-3xl border border-white/50 shadow-lg shadow-sky-100/50',
+        'bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl border border-white/50 dark:border-slate-700/50 shadow-lg shadow-sky-100/50 dark:shadow-slate-900/30',
         padding === 'sm' && 'p-3',
         padding === 'md' && 'p-5',
         padding === 'lg' && 'p-7',

@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useApi, apiPut } from '@/hooks/useApi';
 import type { Settings } from '@/types';
 import { useToast } from '@/hooks/useToast';
+import { useAppStore } from '@/stores/app';
 
 const container = {
   hidden: { opacity: 0 },
@@ -26,11 +27,13 @@ const item = {
 export default function SettingsPage() {
   const { data: settings, loading, refetch } = useApi<Settings>('/settings');
   const { addToast, ToastContainer } = useToast();
+  const darkMode = useAppStore((s) => s.darkMode);
+  const toggleDarkMode = useAppStore((s) => s.toggleDarkMode);
+  const setDarkMode = useAppStore((s) => s.setDarkMode);
 
   const [partnerName1, setPartnerName1] = useState('');
   const [partnerName2, setPartnerName2] = useState('');
   const [relationshipStartDate, setRelationshipStartDate] = useState('');
-  const [darkMode, setDarkMode] = useState(false);
   const [blueTheme, setBlueTheme] = useState(true);
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -49,8 +52,10 @@ export default function SettingsPage() {
           ? settings.relationshipStartDate.split('T')[0]
           : ''
       );
-      setDarkMode(settings.darkMode || false);
       setBlueTheme(settings.blueTheme !== undefined ? settings.blueTheme : true);
+      if (settings.darkMode && !darkMode) {
+        toggleDarkMode();
+      }
     }
   }, [settings]);
 
