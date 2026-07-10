@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -29,12 +29,13 @@ interface MemoryFormProps {
   onSubmit: (data: MemoryFormData) => void;
   onCancel?: () => void;
   loading?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const moods = ['happy', 'loved', 'excited', 'grateful', 'peaceful', 'romantic', 'adventurous', 'nostalgic', 'silly', 'cozy'];
 const weathers = ['sunny', 'cloudy', 'rainy', 'snowy', 'windy', 'stormy', 'rainbow'];
 
-export default function MemoryForm({ initialData, onSubmit, onCancel, loading }: MemoryFormProps) {
+export default function MemoryForm({ initialData, onSubmit, onCancel, loading, onDirtyChange }: MemoryFormProps) {
   const [form, setForm] = useState<MemoryFormData>({
     title: initialData?.title || '',
     description: initialData?.description || '',
@@ -55,9 +56,29 @@ export default function MemoryForm({ initialData, onSubmit, onCancel, loading }:
   const [showMusicInput, setShowMusicInput] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const initialRef = useRef(initialData);
   const imageRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const voiceRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!onDirtyChange) return;
+    const init = initialRef.current;
+    const isDirty =
+      form.title !== (init?.title || '') ||
+      form.description !== (init?.description || '') ||
+      form.date !== (init?.date || new Date().toISOString().split('T')[0]) ||
+      form.time !== (init?.time || '') ||
+      form.location !== (init?.location || '') ||
+      form.mood !== (init?.mood || '') ||
+      form.weather !== (init?.weather || '') ||
+      JSON.stringify(form.tags) !== JSON.stringify(init?.tags || []) ||
+      JSON.stringify(form.images) !== JSON.stringify(init?.images || []) ||
+      JSON.stringify(form.videos) !== JSON.stringify(init?.videos || []) ||
+      JSON.stringify(form.voiceNotes) !== JSON.stringify(init?.voiceNotes || []) ||
+      JSON.stringify(form.music) !== JSON.stringify(init?.music || null);
+    onDirtyChange(isDirty);
+  }, [form, onDirtyChange]);
 
   const update = (key: keyof MemoryFormData, value: any) => {
     setForm((prev) => ({ ...prev, [key]: value }));
