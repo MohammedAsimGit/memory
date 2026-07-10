@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -8,10 +8,11 @@ import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
-import { useApi, apiPost, apiDelete } from '@/hooks/useApi';
+import { useApi, apiPost, apiDelete, apiPut } from '@/hooks/useApi';
 import { useAuthStore } from '@/stores/auth';
 import { TimeCapsule } from '@/types';
-import { daysUntil, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { getUnlockStatus, formatRemaining } from '@/lib/unlockUtils';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,18 +37,18 @@ const cardVariants = {
   },
 };
 
-function CapsuleIcon({ locked }: { locked: boolean }) {
+function CapsuleIcon({ canOpen }: { canOpen: boolean }) {
   return (
     <motion.div
-      animate={locked ? { y: [0, -4, 0] } : {}}
-      transition={locked ? { duration: 3, repeat: Infinity, ease: 'easeInOut' } : {}}
+      animate={!canOpen ? { y: [0, -4, 0] } : {}}
+      transition={!canOpen ? { duration: 3, repeat: Infinity, ease: 'easeInOut' } : {}}
       className={`w-full h-36 rounded-2xl flex items-center justify-center text-6xl ${
-        locked
+        !canOpen
           ? 'bg-gradient-to-br from-indigo-100 to-purple-200'
           : 'bg-gradient-to-br from-[#4FC3F7]/20 to-[#1976D2]/20'
       }`}
     >
-      {locked ? (
+      {!canOpen ? (
         <div className="flex flex-col items-center gap-0.5">
           <span className="text-5xl">📦</span>
           <span className="text-2xl">⏳</span>
@@ -59,75 +60,43 @@ function CapsuleIcon({ locked }: { locked: boolean }) {
   );
 }
 
-function LiveCountdown({ targetDate }: { targetDate: string }) {
-  const days = daysUntil(targetDate);
-
-  if (days <= 0) {
-    return (
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-        className="text-center"
-      >
-        <span className="text-3xl">🎉</span>
-        <p className="text-sm font-bold text-emerald-700 mt-1">Unlocked!</p>
-      </motion.div>
-    );
-  }
-
-  const totalSeconds = days * 86400;
-  const d = Math.floor(totalSeconds / 86400);
-  const h = Math.floor((totalSeconds % 86400) / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-
-  return (
-    <div className="flex items-center justify-center gap-1.5">
-      <div className="flex flex-col items-center">
-        <span className="text-lg font-black text-amber-700 tabular-nums">{d}</span>
-        <span className="text-[9px] text-amber-500 font-semibold uppercase">days</span>
-      </div>
-      <span className="text-amber-400 font-bold">:</span>
-      <div className="flex flex-col items-center">
-        <span className="text-lg font-black text-amber-700 tabular-nums">{h}</span>
-        <span className="text-[9px] text-amber-500 font-semibold uppercase">hrs</span>
-      </div>
-      <span className="text-amber-400 font-bold">:</span>
-      <div className="flex flex-col items-center">
-        <span className="text-lg font-black text-amber-700 tabular-nums">{m}</span>
-        <span className="text-[9px] text-amber-500 font-semibold uppercase">min</span>
-      </div>
-      <span className="text-amber-400 font-bold">:</span>
-      <div className="flex flex-col items-center">
-        <span className="text-lg font-black text-amber-700 tabular-nums">{s}</span>
-        <span className="text-[9px] text-amber-500 font-semibold uppercase">sec</span>
-      </div>
-    </div>
-  );
-}
-
 export default function TimeCapsulePage() {
   const { data: capsules, loading, refetch } = useApi<TimeCapsule[]>('/time-capsule');
   const activeProfile = useAuthStore((s) => s.activeProfile);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [liveDurations, setLiveDurations] = useState<Record<string, number>>({});
   const [form, setForm] = useState({
     title: '',
     content: '',
     unlockDate: '',
     images: [] as string[],
   });
+  const tickRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  useEffect(() => {
+    tickRef.current = setInterval(() => {
+      if (!capsules) return;
+      const next: Record<string, number> = {};
+      for (const c of capsules) {
+        if (c.isOpened) continue;
+        next[c._id] = new Date(c.unlockDate).getTime() - Date.now();
+      }
+      setLiveDurations(next);
+    }, 1000);
+    return () => clearInterval(tickRef.current);
+  }, [capsules]);
 
   const resetForm = () => {
     setShowModal(false);
     setForm({ title: '', content: '', unlockDate: '', images: [] });
   };
 
-  const handleSubmit = async () => {
+  const handleCreate = async () => {
     if (!form.title || !form.content || !form.unlockDate) return;
     setSubmitting(true);
     try {
@@ -154,8 +123,30 @@ export default function TimeCapsulePage() {
     }
   };
 
+  const handleOpen = async (id: string) => {
+    if (openingId) return;
+    setOpeningId(id);
+    try {
+      await apiPut(`/time-capsule/${id}`, { markOpened: true });
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      await refetch();
+    } catch {
+      // silent
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
   const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   const handleImagePlaceholder = () => {
@@ -231,8 +222,9 @@ export default function TimeCapsulePage() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           {capsules.map((capsule) => {
-            const locked = new Date() < new Date(capsule.unlockDate);
-            const isExpanded = expandedId === capsule._id;
+            const isRevealed = expandedIds.has(capsule._id) || capsule.isOpened === true;
+            const { status, canOpen, remainingMs } = getUnlockStatus(capsule.unlockDate, capsule.isOpened || isRevealed);
+            const isExpanded = expandedIds.has(capsule._id);
 
             return (
               <motion.div
@@ -241,19 +233,20 @@ export default function TimeCapsulePage() {
                 exit="exit"
                 layout
               >
-                <GlassCard
-                  padding="sm"
-                  onClick={() => {
-                    if (!locked) toggleExpand(capsule._id);
-                  }}
-                >
+                <GlassCard padding="sm">
                   <div className="relative">
-                    <CapsuleIcon locked={locked} />
+                    <CapsuleIcon canOpen={canOpen} />
 
-                    {locked && (
+                    {!canOpen && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg">
-                          <LiveCountdown targetDate={capsule.unlockDate} />
+                          <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex flex-col items-center">
+                              <span className="text-lg font-black text-amber-700 tabular-nums">
+                                {formatRemaining(liveDurations[capsule._id] ?? remainingMs)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -267,11 +260,24 @@ export default function TimeCapsulePage() {
                     </div>
 
                     <p className="text-xs text-slate-400 mt-1">
-                      {locked ? 'Sealed until' : 'Unlocked on'}{' '}
+                      {!canOpen ? 'Sealed until' : 'Unlocked on'}{' '}
                       {formatDate(capsule.unlockDate)}
                     </p>
 
-                    {!locked && (
+                    {canOpen && !isRevealed && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpen(capsule._id);
+                        }}
+                        disabled={openingId === capsule._id}
+                        className="mt-2 text-xs font-semibold text-[#1976D2] hover:underline disabled:opacity-50"
+                      >
+                        {openingId === capsule._id ? 'Opening...' : 'Open capsule'}
+                      </button>
+                    )}
+
+                    {isRevealed && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -279,11 +285,11 @@ export default function TimeCapsulePage() {
                         }}
                         className="mt-2 text-xs font-semibold text-[#1976D2] hover:underline"
                       >
-                        {isExpanded ? 'Hide content' : 'Open capsule'}
+                        {isExpanded ? 'Hide content' : 'Show content'}
                       </button>
                     )}
 
-                    {isExpanded && !locked && (
+                    {isExpanded && isRevealed && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
@@ -429,7 +435,7 @@ export default function TimeCapsulePage() {
               Cancel
             </Button>
             <Button
-              onClick={handleSubmit}
+              onClick={handleCreate}
               disabled={submitting || !form.title || !form.content || !form.unlockDate}
               loading={submitting}
               className="flex-1"

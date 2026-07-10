@@ -29,6 +29,35 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const { id } = await params;
+    const body = await request.json();
+
+    if (body.markOpened) {
+      const capsule = await TimeCapsule.findByIdAndUpdate(
+        id,
+        { isOpened: true, isLocked: false, openedAt: new Date().toISOString() },
+        { new: true }
+      );
+
+      if (!capsule) {
+        return NextResponse.json({ error: 'Time capsule not found' }, { status: 404 });
+      }
+
+      return NextResponse.json(capsule);
+    }
+
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to update time capsule' }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -5,8 +5,22 @@ import { Letter } from '@/models';
 export async function GET() {
   try {
     await connectDB();
+    const now = new Date();
     const letters = await Letter.find().sort({ createdAt: -1 });
-    return NextResponse.json(letters);
+
+    const updated = await Promise.all(
+      letters.map(async (letter) => {
+        if (letter.isOpened) return letter;
+        const unlockDate = new Date(letter.unlockDate);
+        if (unlockDate <= now && letter.isLocked) {
+          letter.isLocked = false;
+          await letter.save();
+        }
+        return letter;
+      })
+    );
+
+    return NextResponse.json(updated);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch letters' }, { status: 500 });
   }

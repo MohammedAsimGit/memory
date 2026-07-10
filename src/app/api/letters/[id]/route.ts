@@ -29,6 +29,35 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const { id } = await params;
+    const body = await request.json();
+
+    if (body.markOpened) {
+      const letter = await Letter.findByIdAndUpdate(
+        id,
+        { isOpened: true, isLocked: false, openedAt: new Date().toISOString() },
+        { new: true }
+      );
+
+      if (!letter) {
+        return NextResponse.json({ error: 'Letter not found' }, { status: 404 });
+      }
+
+      return NextResponse.json(letter);
+    }
+
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to update letter' }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

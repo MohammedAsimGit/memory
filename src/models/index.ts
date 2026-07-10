@@ -115,6 +115,8 @@ export interface ILetter extends Document {
   content: string;
   unlockDate: string;
   isLocked: boolean;
+  isOpened?: boolean;
+  openedAt?: string;
   author?: string;
 }
 
@@ -124,6 +126,8 @@ const LetterSchema = new Schema<ILetter>(
     content: { type: String, required: true },
     unlockDate: { type: String, required: true },
     isLocked: { type: Boolean, default: true },
+    isOpened: { type: Boolean, default: false },
+    openedAt: { type: String },
     author: { type: String, default: 'me' },
   },
   { timestamps: true }
@@ -138,6 +142,8 @@ export interface ITimeCapsule extends Document {
   images: string[];
   unlockDate: string;
   isLocked: boolean;
+  isOpened?: boolean;
+  openedAt?: string;
   author?: string;
 }
 
@@ -148,6 +154,8 @@ const TimeCapsuleSchema = new Schema<ITimeCapsule>(
     images: [{ type: String }],
     unlockDate: { type: String, required: true },
     isLocked: { type: Boolean, default: true },
+    isOpened: { type: Boolean, default: false },
+    openedAt: { type: String },
     author: { type: String, default: 'me' },
   },
   { timestamps: true }

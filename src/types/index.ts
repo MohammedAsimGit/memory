@@ -56,6 +56,8 @@ export interface Letter {
   content: string;
   unlockDate: string;
   isLocked: boolean;
+  isOpened?: boolean;
+  openedAt?: string;
   author?: string;
   createdAt: string;
   updatedAt: string;
@@ -68,6 +70,8 @@ export interface TimeCapsule {
   images: string[];
   unlockDate: string;
   isLocked: boolean;
+  isOpened?: boolean;
+  openedAt?: string;
   author?: string;
   createdAt: string;
   updatedAt: string;

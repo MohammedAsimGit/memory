@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassCard from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -8,10 +8,11 @@ import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import AuthorAvatar from '@/components/post/AuthorAvatar';
-import { useApi, apiPost, apiDelete } from '@/hooks/useApi';
+import { useApi, apiPost, apiDelete, apiPut } from '@/hooks/useApi';
 import { useAuthStore } from '@/stores/auth';
 import { Letter } from '@/types';
-import { daysUntil, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { getUnlockStatus, formatRemaining } from '@/lib/unlockUtils';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -38,6 +39,22 @@ export default function LettersPage() {
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [shakeId, setShakeId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [liveDurations, setLiveDurations] = useState<Record<string, number>>({});
+  const tickRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  useEffect(() => {
+    tickRef.current = setInterval(() => {
+      if (!letters) return;
+      const next: Record<string, number> = {};
+      for (const l of letters) {
+        if (l.isOpened) continue;
+        next[l._id] = new Date(l.unlockDate).getTime() - Date.now();
+      }
+      setLiveDurations(next);
+    }, 1000);
+    return () => clearInterval(tickRef.current);
+  }, [letters]);
 
   const [form, setForm] = useState({ title: '', content: '', unlockDate: '' });
 
@@ -68,13 +85,20 @@ export default function LettersPage() {
     setDeleting(null);
   };
 
-  const handleReveal = (id: string) => {
-    setRevealedIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    setMenuOpen(null);
+  const handleOpen = async (id: string) => {
+    if (openingId) return;
+    setOpeningId(id);
+    try {
+      await apiPut(`/letters/${id}`, { markOpened: true });
+      setRevealedIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      setMenuOpen(null);
+      await refetch();
+    } catch { /* silent */ }
+    setOpeningId(null);
   };
 
   const handleTapLocked = (id: string) => {
@@ -122,14 +146,8 @@ export default function LettersPage() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           {letters.map((letter) => {
-            const canOpen = new Date() >= new Date(letter.unlockDate);
-            const isRevealed = revealedIds.has(letter._id);
-            const days = daysUntil(letter.unlockDate);
-            const status: 'sealed' | 'ready' | 'opened' = isRevealed
-              ? 'opened'
-              : canOpen
-                ? 'ready'
-                : 'sealed';
+            const isRevealed = revealedIds.has(letter._id) || letter.isOpened === true;
+            const { status, canOpen, remainingMs } = getUnlockStatus(letter.unlockDate, letter.isOpened || isRevealed);
 
             return (
               <motion.div
@@ -165,7 +183,7 @@ export default function LettersPage() {
                           >
                             {canOpen && !isRevealed && (
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleReveal(letter._id); }}
+                                onClick={(e) => { e.stopPropagation(); handleOpen(letter._id); }}
                                 className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-900/30 flex items-center gap-2 transition-colors"
                               >
                                 <span>📖</span> Open
@@ -188,7 +206,7 @@ export default function LettersPage() {
                         if (!canOpen) {
                           handleTapLocked(letter._id);
                         } else if (!isRevealed) {
-                          handleReveal(letter._id);
+                          handleOpen(letter._id);
                         }
                       }}
                       className="w-full text-left"
@@ -217,9 +235,9 @@ export default function LettersPage() {
                         </span>
                       </div>
 
-                      {!canOpen && days > 0 ? (
+                      {!canOpen ? (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200/50 dark:border-amber-700/30 text-xs font-semibold text-amber-700 dark:text-amber-300 shadow-sm">
-                          <span>⏳</span> Opens in {days} {days === 1 ? 'day' : 'days'}
+                          <span>⏳</span> {formatRemaining(liveDurations[letter._id] ?? remainingMs)}
                         </div>
                       ) : !isRevealed ? (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-sky-50 to-sky-100 dark:from-sky-900/20 dark:to-sky-800/20 border border-sky-200/50 dark:border-sky-700/30 text-xs font-semibold text-sky-700 dark:text-sky-300 shadow-sm">
