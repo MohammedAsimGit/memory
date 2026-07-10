@@ -101,7 +101,13 @@ export default function HomePage() {
 
       <motion.div variants={item}>
         <ContinueWriting
-          journalDraft={latestJournal ? { title: `Journal · ${latestJournal.date}`, preview: latestJournal.content.slice(0, 80) + '...' } : null}
+          journalDraft={latestJournal ? {
+            title: `Journal · ${latestJournal.date}`,
+            preview: latestJournal.content.slice(0, 80) + '...',
+            date: latestJournal.date,
+            author: latestJournal.author || 'me',
+            mood: latestJournal.mood,
+          } : null}
         />
       </motion.div>
 
