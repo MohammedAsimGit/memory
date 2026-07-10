@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConfirmModal from '@/components/modals/ConfirmModal';
 import PostHeader from '@/components/post/PostHeader';
 import { useApi, apiGet, apiPost, apiDelete } from '@/hooks/useApi';
+import { useAuthStore } from '@/stores/auth';
 import type { Memory, Comment } from '@/types';
 import { formatDate, formatTime, getMoodEmoji, getWeatherEmoji } from '@/lib/utils';
 
@@ -38,8 +39,11 @@ export default function MemoryDetailPage() {
 
   const { data: memory, loading, error } = useApi<Memory>(`/memories/${id}`);
 
+  const activeProfile = useAuthStore((s) => s.activeProfile);
+
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -67,15 +71,20 @@ export default function MemoryDetailPage() {
   };
 
   const handleAddComment = async (content: string) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const newComment = await apiPost<Comment>(`/memories/${id}/comments`, {
         content,
-        author: 'Me',
+        author: activeProfile || 'me',
       });
       setComments((prev) => [newComment, ...prev]);
       showToast('Comment added!', 'success');
-    } catch {
-      showToast('Failed to add comment.', 'error');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Unable to post your comment. Please try again.';
+      showToast(msg, 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -275,6 +284,7 @@ export default function MemoryDetailPage() {
                 memoryId={id}
                 comments={comments}
                 onAdd={handleAddComment}
+                submitting={submitting}
               />
             )}
           </GlassCard>
