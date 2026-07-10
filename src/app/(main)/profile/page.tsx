@@ -17,7 +17,6 @@ const navItems = [
   { title: 'Gallery', desc: 'Browse all photos and videos', icon: '🖼️', color: '#3B82F6', href: '/gallery' },
   { title: 'Memory Map', desc: 'Explore memories by location', icon: '🗺️', color: '#14B8A6', href: '/map' },
   { title: 'Search', desc: 'Find memories instantly', icon: '🔍', color: '#64748B', href: '/search' },
-  { title: 'Settings', desc: 'Customize the app and privacy', icon: '⚙️', color: '#78716C', href: '/settings' },
 ];
 
 const statCards = [
