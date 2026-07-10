@@ -51,16 +51,15 @@ const tabs = [
     route: '/gallery',
   },
   {
-    id: 'more',
-    label: 'More',
+    id: 'profile',
+    label: 'Profile',
     icon: (active: boolean) => (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="6" r="2" fill={active ? '#1976D2' : '#94A3B8'} />
-        <circle cx="12" cy="12" r="2" fill={active ? '#1976D2' : '#94A3B8'} />
-        <circle cx="12" cy="18" r="2" fill={active ? '#1976D2' : '#94A3B8'} />
+        <circle cx="12" cy="8" r="4" stroke={active ? '#1976D2' : '#94A3B8'} strokeWidth="2" />
+        <path d="M4 21a8 8 0 0116 0" stroke={active ? '#1976D2' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    route: '/more',
+    route: '/profile',
   },
 ];
 
