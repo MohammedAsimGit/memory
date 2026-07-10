@@ -86,13 +86,13 @@ export default function HomePage() {
     >
       <motion.div variants={item}>
         <div className="mb-2">
-          <h2 className="text-lg font-semibold text-slate-500 dark:text-slate-400">
+            <h2 className="text-lg font-semibold text-slate-500 dark:text-slate-300">
             {timeGreeting}
           </h2>
           <h1 className="text-[28px] font-black text-slate-800 dark:text-slate-100 tracking-tight">
             {displayName} <span className="text-gradient">❤️</span>
           </h1>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">Welcome back</p>
+          <p className="text-sm text-slate-400 dark:text-slate-400 mt-0.5">Welcome back</p>
         </div>
       </motion.div>
 
@@ -110,7 +110,7 @@ export default function HomePage() {
         variants={item}
         className="py-1 text-center"
       >
-        <p className="text-slate-400 italic text-sm leading-relaxed">
+        <p className="text-slate-400 dark:text-slate-400 italic text-sm leading-relaxed">
           &ldquo;{quote.text}&rdquo;
         </p>
         <p className="text-slate-300 text-xs mt-1.5">— {quote.author}</p>

@@ -125,7 +125,7 @@ export default function SearchPage() {
       className="pb-24"
     >
       <motion.div variants={item} className="mb-6">
-        <h1 className="text-3xl font-black text-slate-800 tracking-tight">Search</h1>
+        <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Search</h1>
         <p className="text-sm text-slate-400 mt-1">
           Find your memories by anything
         </p>
@@ -155,7 +155,7 @@ export default function SearchPage() {
               className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 ${
                 yearFilter === y
                   ? 'bg-gradient-to-r from-[#4FC3F7] to-[#1976D2] text-white shadow-md shadow-blue-400/25'
-                  : 'bg-white/60 backdrop-blur-sm text-slate-600 border border-white/40 hover:bg-white/80'
+                  : 'bg-white/60 backdrop-blur-sm text-slate-600 dark:text-slate-200 border border-white/40 hover:bg-white/80'
               }`}
             >
               {y}
@@ -177,7 +177,7 @@ export default function SearchPage() {
                   : a === 'her'
                   ? 'bg-gradient-to-r from-[#C084FC] to-[#A855F7] text-white shadow-md shadow-purple-400/25'
                   : 'bg-gradient-to-r from-[#4FC3F7] to-[#1976D2] text-white shadow-md shadow-blue-400/25'
-                : 'bg-white/60 backdrop-blur-sm text-slate-600 border border-white/40 hover:bg-white/80'
+                : 'bg-white/60 backdrop-blur-sm text-slate-600 dark:text-slate-200 border border-white/40 hover:bg-white/80'
             }`}
           >
             {a === 'me' ? '🩵 Mine' : a === 'her' ? '💜 Hers' : 'All'}
@@ -195,7 +195,7 @@ export default function SearchPage() {
               className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
                 moodFilter === m
                   ? 'bg-gradient-to-r from-[#4FC3F7] to-[#1976D2] text-white shadow-md shadow-blue-400/25'
-                  : 'bg-white/60 backdrop-blur-sm text-slate-600 border border-white/40 hover:bg-white/80'
+                  : 'bg-white/60 backdrop-blur-sm text-slate-600 dark:text-slate-200 border border-white/40 hover:bg-white/80'
               }`}
             >
               <span>{moodEmojis[m] || '💙'}</span>
@@ -245,7 +245,7 @@ export default function SearchPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="font-bold text-slate-800 truncate">{memory.title}</h3>
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate">{memory.title}</h3>
                       {memory.isFavorite && (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-rose-400 flex-shrink-0">
                           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -254,13 +254,13 @@ export default function SearchPage() {
                     </div>
                     <p className="text-xs text-slate-400 mb-1">{formatDate(memory.date)}</p>
                     {memory.description && (
-                      <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="text-sm text-slate-500 dark:text-slate-300 line-clamp-2 leading-relaxed">
                         {memory.description}
                       </p>
                     )}
                     <div className="flex flex-wrap gap-1 mt-2">
                       {memory.mood && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-600 border border-sky-100">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-300 border border-sky-100 dark:border-sky-700/50">
                           {moodEmojis[memory.mood] || '💙'} {memory.mood}
                         </span>
                       )}
@@ -272,7 +272,7 @@ export default function SearchPage() {
                       {memory.tags?.slice(0, 3).map((tag) => (
                         <span
                           key={tag}
-                          className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200"
+                          className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-700/50"
                         >
                           #{tag}
                         </span>

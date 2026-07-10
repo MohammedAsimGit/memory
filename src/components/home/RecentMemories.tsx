@@ -10,7 +10,7 @@ export default function RecentMemories({ memories }: { memories: Memory[] }) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-bold text-slate-800">Recent Memories</h2>
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Recent Memories</h2>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
         {memories.slice(0, 5).map((memory, i) => (
           <motion.div
@@ -32,8 +32,8 @@ export default function RecentMemories({ memories }: { memories: Memory[] }) {
                   💙
                 </div>
               )}
-              <p className="font-semibold text-sm text-slate-800 line-clamp-1">{memory.title}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{formatDate(memory.date)}</p>
+              <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 line-clamp-1">{memory.title}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{formatDate(memory.date)}</p>
             </GlassCard>
           </motion.div>
         ))}

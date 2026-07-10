@@ -159,7 +159,7 @@ export default function LettersPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+            <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
               Letters to Future
             </h1>
             <p className="text-sm text-slate-400 mt-0.5">
@@ -226,7 +226,7 @@ export default function LettersPage() {
                   <EnvelopeIcon locked={locked} />
 
                   <div className="mt-3 px-1">
-                    <h3 className="font-bold text-slate-800 text-sm leading-tight line-clamp-1">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight line-clamp-1">
                       {letter.title}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">
@@ -238,7 +238,7 @@ export default function LettersPage() {
                       {locked ? (
                         <CountdownBadge days={Math.max(0, days)} />
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-900/30 text-xs font-semibold text-sky-700 dark:text-sky-300">
                           📖 Read now
                         </span>
                       )}
@@ -259,7 +259,7 @@ export default function LettersPage() {
                             transition={{ delay: 0.15, duration: 0.3 }}
                             className="mt-3 p-4 rounded-xl bg-[#FFF8E7] border border-amber-200/60"
                           >
-                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                            <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
                               {letter.content}
                             </p>
                           </motion.div>
@@ -285,7 +285,7 @@ export default function LettersPage() {
                           handleDelete(letter._id);
                         }}
                         disabled={deleting === letter._id}
-                        className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors"
+                        className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors"
                       >
                         {deleting === letter._id ? (
                           <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />

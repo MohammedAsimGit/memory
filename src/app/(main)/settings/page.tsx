@@ -161,7 +161,7 @@ export default function SettingsPage() {
     label: string;
   }) => (
     <div className="flex items-center justify-between py-3">
-      <span className="text-sm font-semibold text-slate-700">{label}</span>
+      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</span>
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={() => onChange(!checked)}
@@ -189,7 +189,7 @@ export default function SettingsPage() {
   }) => (
     <div className="flex items-center gap-2 mb-3">
       <span className="text-lg">{icon}</span>
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
         {title}
       </h3>
     </div>
@@ -205,8 +205,8 @@ export default function SettingsPage() {
       <ToastContainer />
 
       <motion.div variants={item} className="mb-6">
-        <h1 className="text-3xl font-black text-slate-800 tracking-tight">Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">Customize your experience</p>
+        <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Settings</h1>
+        <p className="text-sm text-slate-400 dark:text-slate-400 mt-1">Customize your experience</p>
       </motion.div>
 
       <div className="space-y-6">
@@ -327,7 +327,7 @@ export default function SettingsPage() {
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Remember Profile
                 </span>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 dark:text-slate-400 mt-0.5">
                   Auto-restore this profile after unlocking
                 </p>
               </div>
@@ -371,8 +371,8 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-slate-800">Export Data</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">Export Data</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-400 mt-0.5">
                     Download all your memories and data as JSON
                   </p>
                 </div>
@@ -387,8 +387,8 @@ export default function SettingsPage() {
               </div>
               <div className="border-t border-slate-100" />
               <div>
-                <p className="font-semibold text-slate-800 mb-1">Backup &amp; Restore</p>
-                <p className="text-xs text-slate-400">
+                <p className="font-semibold text-slate-800 dark:text-slate-100 mb-1">Backup &amp; Restore</p>
+                <p className="text-xs text-slate-400 dark:text-slate-400">
                   Backup and restore functionality coming soon. Your data is stored safely on your server.
                 </p>
               </div>
@@ -400,17 +400,17 @@ export default function SettingsPage() {
           <SectionHeader icon="ℹ️" title="About" />
           <GlassCard>
             <div className="space-y-3">
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-slate-600">App Version</span>
-                <span className="text-sm font-semibold text-slate-800">1.0.0</span>
-              </div>
-              <div className="border-t border-slate-100" />
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-slate-600">Made with</span>
-                <span className="text-sm font-semibold text-slate-800">Next.js &amp; Framer Motion</span>
-              </div>
-              <div className="border-t border-slate-100" />
-              <p className="text-xs text-slate-400 leading-relaxed pt-1">
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-sm text-slate-600 dark:text-slate-300">App Version</span>
+                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">1.0.0</span>
+                </div>
+                <div className="border-t border-slate-100 dark:border-slate-700/50" />
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-sm text-slate-600 dark:text-slate-300">Made with</span>
+                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Next.js &amp; Framer Motion</span>
+                </div>
+                <div className="border-t border-slate-100 dark:border-slate-700/50" />
+                <p className="text-xs text-slate-400 dark:text-slate-400 leading-relaxed pt-1">
                 Our Story is a private journal for couples. Capture your memories, special
                 days, letters, and more — all in one beautiful place.
               </p>

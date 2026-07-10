@@ -54,7 +54,7 @@ export default function MapPage() {
       className="pb-24"
     >
       <motion.div variants={item} className="mb-6">
-        <h1 className="text-3xl font-black text-slate-800 tracking-tight">Map</h1>
+        <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Map</h1>
         <p className="text-sm text-slate-400 mt-1">
           {locationMemories.length > 0
             ? `${locationMemories.length} memor${locationMemories.length !== 1 ? 'ies' : 'y'} across ${locations.length} location${locations.length !== 1 ? 's' : ''}`
@@ -102,23 +102,23 @@ export default function MapPage() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-800 text-lg leading-tight truncate">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg leading-tight truncate">
                       {location}
                     </h3>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-sm text-slate-500 dark:text-slate-300 mt-1">
                       {mems.length} memor{mems.length !== 1 ? 'ies' : 'y'}
                     </p>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {mems.slice(0, 3).map((m) => (
                         <span
                           key={m._id}
-                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-600 border border-sky-100"
+                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-300 border border-sky-100 dark:border-sky-700/50"
                         >
                           {m.title}
                         </span>
                       ))}
                       {mems.length > 3 && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-700/50">
                           +{mems.length - 3} more
                         </span>
                       )}

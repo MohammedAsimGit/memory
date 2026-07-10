@@ -34,7 +34,7 @@ export default function Button({
       className={cn(
         'rounded-2xl font-semibold transition-all duration-200 flex items-center justify-center gap-2',
         variant === 'primary' && 'bg-gradient-to-r from-[#4FC3F7] to-[#1976D2] text-white shadow-lg shadow-blue-400/30',
-        variant === 'secondary' && 'bg-white/80 backdrop-blur-md text-[#1976D2] shadow-md border border-white/50',
+        variant === 'secondary' && 'bg-white/80 dark:bg-slate-700/80 backdrop-blur-md text-[#1976D2] dark:text-[#64B5F6] shadow-md border border-white/50 dark:border-slate-700/50',
         variant === 'ghost' && 'bg-transparent text-[#2196F3]',
         variant === 'danger' && 'bg-red-500 text-white shadow-lg shadow-red-400/30',
         size === 'sm' && 'px-4 py-2 text-sm',

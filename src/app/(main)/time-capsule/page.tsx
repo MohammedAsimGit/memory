@@ -189,7 +189,7 @@ export default function TimeCapsulePage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+            <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
               Time Capsule
             </h1>
             <p className="text-sm text-slate-400 mt-0.5">
@@ -261,7 +261,7 @@ export default function TimeCapsulePage() {
 
                   <div className="mt-3 px-1">
                     <div className="flex items-start justify-between">
-                      <h3 className="font-bold text-slate-800 text-sm leading-tight">
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">
                         {capsule.title}
                       </h3>
                     </div>
@@ -297,7 +297,7 @@ export default function TimeCapsulePage() {
                           transition={{ delay: 0.15, duration: 0.3 }}
                           className="mt-3 p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-purple-200/40"
                         >
-                          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                          <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
                             {capsule.content}
                           </p>
 
@@ -335,7 +335,7 @@ export default function TimeCapsulePage() {
                           handleDelete(capsule._id);
                         }}
                         disabled={deleting === capsule._id}
-                        className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors"
+                        className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors"
                       >
                         {deleting === capsule._id ? (
                           <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
@@ -375,19 +375,19 @@ export default function TimeCapsulePage() {
           />
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 ml-1 mb-1.5">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 ml-1 mb-1.5">
               Images
             </label>
             <div className="space-y-2">
               {form.images.map((url, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-2 bg-slate-50 rounded-xl p-2 pr-1"
+                  className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl p-2 pr-1"
                 >
                   <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
                     <img src={url} alt="" className="w-full h-full object-cover" />
                   </div>
-                  <span className="text-xs text-slate-500 truncate flex-1">{url}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-300 truncate flex-1">{url}</span>
                   <button
                     type="button"
                     onClick={() => removeImage(i)}
@@ -403,7 +403,7 @@ export default function TimeCapsulePage() {
               <button
                 type="button"
                 onClick={handleImagePlaceholder}
-                className="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 text-sm text-slate-500 hover:border-[#4FC3F7] hover:text-[#1976D2] hover:bg-sky-50/50 transition-all duration-200 font-medium"
+                className="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 text-sm text-slate-500 dark:text-slate-300 hover:border-[#4FC3F7] hover:text-[#1976D2] hover:bg-sky-50/50 transition-all duration-200 font-medium"
               >
                 + Add Image URL
               </button>
@@ -450,7 +450,7 @@ export default function TimeCapsulePage() {
           >
             <button
               onClick={() => setSelectedImage(null)}
-              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors z-10"
+              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors z-10"
             >
               ✕
             </button>

@@ -8,8 +8,8 @@ export default function MusicWidget({ tracks }: { tracks: MusicTrack[] }) {
   return (
     <GlassCard>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-slate-800">🎵 Our Playlist</h3>
-        <span className="text-xs text-slate-400">{tracks.length} songs</span>
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">🎵 Our Playlist</h3>
+        <span className="text-xs text-slate-400 dark:text-slate-400">{tracks.length} songs</span>
       </div>
       {tracks.length > 0 ? (
         <div className="space-y-2">
@@ -19,14 +19,14 @@ export default function MusicWidget({ tracks }: { tracks: MusicTrack[] }) {
                 🎵
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{track.title}</p>
-                <p className="text-xs text-slate-500 truncate">{track.artist}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{track.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-300 truncate">{track.artist}</p>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-slate-400 italic">Add songs to your playlist</p>
+        <p className="text-sm text-slate-400 dark:text-slate-400 italic">Add songs to your playlist</p>
       )}
     </GlassCard>
   );

@@ -28,7 +28,7 @@ export default function GalleryGrid({ memories }: GalleryGridProps) {
       <div className="mb-4">
         <div className="relative">
           <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400"
             width="18"
             height="18"
             viewBox="0 0 24 24"
@@ -42,7 +42,7 @@ export default function GalleryGrid({ memories }: GalleryGridProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search photos..."
-            className="w-full bg-white/80 backdrop-blur-md border border-white/50 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 shadow-sm"
+            className="w-full bg-white/80 dark:bg-slate-700/80 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 shadow-sm"
           />
         </div>
       </div>

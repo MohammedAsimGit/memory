@@ -112,10 +112,10 @@ export default function SpecialDaysPage() {
         className="flex items-center justify-between"
       >
         <div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
             Special Days
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-300 mt-1">
             Countdowns & milestones
           </p>
         </div>
@@ -135,7 +135,7 @@ export default function SpecialDaysPage() {
           className="py-20 text-center"
         >
           <p className="text-5xl">📅</p>
-          <p className="mt-4 text-lg font-semibold text-slate-600">No special days yet</p>
+          <p className="mt-4 text-lg font-semibold text-slate-600 dark:text-slate-200">No special days yet</p>
           <p className="mt-1 text-sm text-slate-400">
             Tap + Add to create your first one
           </p>
@@ -176,30 +176,30 @@ export default function SpecialDaysPage() {
                         {cfg.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-slate-800 text-base">
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
                           {day.title}
                         </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                           {cfg.label} · {formatDate(day.date)}
                         </p>
                       </div>
                     </div>
 
                     {day.description && (
-                      <p className="mt-3 text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="mt-3 text-sm text-slate-500 dark:text-slate-300 line-clamp-2 leading-relaxed">
                         {day.description}
                       </p>
                     )}
 
                     <div className="mt-4 flex items-center justify-between">
                       {past && !today ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-full text-xs font-medium text-slate-400">
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs font-medium text-slate-400">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
                           Passed
                         </span>
                       ) : (
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-2xl font-bold text-slate-800">
+                          <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                             {remaining}
                           </span>
                           <span className="text-xs font-medium text-slate-400">
@@ -211,7 +211,7 @@ export default function SpecialDaysPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => openEdit(day)}
-                          className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-sky-50 hover:text-[#2196F3] transition-colors"
+                          className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-sky-50 dark:hover:bg-sky-900/30 hover:text-[#2196F3] transition-colors"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -263,7 +263,7 @@ export default function SpecialDaysPage() {
           />
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 ml-1 mb-2">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 ml-1 mb-2">
               Type
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -275,7 +275,7 @@ export default function SpecialDaysPage() {
                   className={`rounded-xl px-3 py-2.5 text-xs font-medium transition-all ${
                     form.type === key
                       ? 'bg-[#2196F3] text-white shadow-md shadow-blue-300/30'
-                      : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
                   <span className="block text-base mb-0.5">{cfg.icon}</span>

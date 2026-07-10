@@ -73,7 +73,7 @@ export default function GalleryPage() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="text-3xl font-black text-slate-800 tracking-tight"
+          className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight"
         >
           Gallery
         </motion.h1>
@@ -118,7 +118,7 @@ export default function GalleryPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="text-sm text-slate-400 mb-5"
+          className="text-sm text-slate-400 dark:text-slate-400 mb-5"
         >
           {totalPhotos(memories)} photo{totalPhotos(memories) !== 1 ? 's' : ''} across {memories!.length} memor{memories!.length !== 1 ? 'ies' : 'y'}
         </motion.p>
@@ -140,7 +140,7 @@ export default function GalleryPage() {
             className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 ${
               sortBy === s
                 ? 'bg-gradient-to-r from-[#4FC3F7] to-[#1976D2] text-white shadow-md shadow-blue-400/25'
-                : 'bg-white/60 backdrop-blur-sm text-slate-600 border border-white/40 hover:bg-white/80'
+                : 'bg-white/60 backdrop-blur-sm text-slate-600 dark:text-slate-200 border border-white/40 hover:bg-white/80'
             }`}
           >
             {s === 'newest' ? 'Newest' : s === 'oldest' ? 'Oldest' : 'Photos Only'}
@@ -154,7 +154,7 @@ export default function GalleryPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.25 + (3 + i) * 0.05 }}
             onClick={() => setSortBy('mood')}
-            className="px-3 py-2 rounded-xl text-sm font-medium bg-white/60 backdrop-blur-sm text-slate-500 border border-white/40 hover:bg-white/80 whitespace-nowrap transition-all duration-200 flex items-center gap-1.5"
+            className="px-3 py-2 rounded-xl text-sm font-medium bg-white/60 backdrop-blur-sm text-slate-500 dark:text-slate-300 border border-white/40 hover:bg-white/80 whitespace-nowrap transition-all duration-200 flex items-center gap-1.5"
           >
             <span>{getMoodEmoji(m)}</span>
             <span className="capitalize">{m}</span>

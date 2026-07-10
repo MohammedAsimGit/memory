@@ -84,7 +84,7 @@ export default function CalendarPage() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="text-3xl font-black text-slate-800 mb-6 tracking-tight"
+        className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-6 tracking-tight"
       >
         Calendar
       </motion.h1>
@@ -156,11 +156,11 @@ export default function CalendarPage() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-slate-800 text-sm truncate">
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">
                         {memory.title}
                       </h3>
                       {memory.description && (
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 line-clamp-2">
                           {memory.description}
                         </p>
                       )}
@@ -171,12 +171,12 @@ export default function CalendarPage() {
                           </span>
                         )}
                         {memory.location && (
-                          <span className="text-xs text-slate-400 truncate">
+                          <span className="text-xs text-slate-400 dark:text-slate-400 truncate">
                             📍 {memory.location}
                           </span>
                         )}
                         {memory.time && (
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-slate-400 dark:text-slate-400">
                             {memory.time}
                           </span>
                         )}

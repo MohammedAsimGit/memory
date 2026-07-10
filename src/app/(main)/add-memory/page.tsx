@@ -47,7 +47,7 @@ export default function AddMemoryPage() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
         onClick={() => router.back()}
-        className="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 mb-5 transition-colors"
+        className="flex items-center gap-1.5 text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-100 mb-5 transition-colors"
       >
         <svg
           width="20"

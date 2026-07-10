@@ -86,7 +86,7 @@ export default function UnlockPage() {
           <h1 className="text-4xl font-black text-gradient mb-3">
             Our Story
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+          <p className="text-slate-500 dark:text-slate-300 text-sm font-medium">
             Every memory has a storyteller...
           </p>
         </motion.div>
@@ -120,7 +120,7 @@ export default function UnlockPage() {
           <h1 className="text-4xl font-black text-gradient mb-2 tracking-tight">
             Our Story
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-slate-500 dark:text-slate-300 font-medium">
             Only You & Me
           </p>
         </motion.div>

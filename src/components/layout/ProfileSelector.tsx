@@ -52,7 +52,7 @@ export default function ProfileSelector({ onSelect }: { onSelect: () => void }) 
         <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
           Who&apos;s using Our Story?
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-slate-500 dark:text-slate-300">
           Select your profile to continue
         </p>
       </motion.div>
@@ -91,7 +91,7 @@ export default function ProfileSelector({ onSelect }: { onSelect: () => void }) 
                   🩵 You
                 </span>
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500">My memories & moments</p>
+              <p className="text-xs text-slate-400 dark:text-slate-400">My memories & moments</p>
             </div>
           </div>
         </motion.button>
@@ -124,7 +124,7 @@ export default function ProfileSelector({ onSelect }: { onSelect: () => void }) 
                   💜 Her
                 </span>
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500">Her memories & moments</p>
+              <p className="text-xs text-slate-400 dark:text-slate-400">Her memories & moments</p>
             </div>
           </div>
         </motion.button>
@@ -147,7 +147,7 @@ export default function ProfileSelector({ onSelect }: { onSelect: () => void }) 
             className="w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-md"
           />
         </button>
-        <span className="text-sm text-slate-600 dark:text-slate-400">
+        <span className="text-sm text-slate-600 dark:text-slate-200">
           Remember this profile on this device
         </span>
       </motion.div>
@@ -156,7 +156,7 @@ export default function ProfileSelector({ onSelect }: { onSelect: () => void }) 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.9 }}
-        className="text-xs text-slate-400 dark:text-slate-500 text-center"
+        className="text-xs text-slate-400 dark:text-slate-400 text-center"
       >
         You can switch profiles anytime from the Profile page
       </motion.p>

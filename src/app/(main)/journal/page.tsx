@@ -168,7 +168,7 @@ export default function JournalPage() {
         className="mb-6 flex items-center justify-between"
       >
         <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+          <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
             Daily Journal
           </h1>
           <p className="text-sm text-slate-400 mt-0.5">
@@ -201,12 +201,12 @@ export default function JournalPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search journal entries..."
-            className="w-full pl-12 pr-4 py-3 bg-white/70 backdrop-blur-xl border border-white/50 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 focus:border-[#2196F3]/50 transition-all duration-200 shadow-sm text-sm"
+            className="w-full pl-12 pr-4 py-3 bg-white/70 backdrop-blur-xl border border-white/50 rounded-2xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 focus:border-[#2196F3]/50 transition-all duration-200 shadow-sm text-sm"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-300 transition-colors text-xs"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors text-xs"
             >
               ✕
             </button>
@@ -276,7 +276,7 @@ export default function JournalPage() {
                       <div className="flex items-center gap-1 ml-2 mt-1">
                         <button
                           onClick={() => openEdit(entry)}
-                          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-sky-100 dark:hover:bg-sky-900/40 hover:text-[#1976D2] transition-colors"
+                          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/40 hover:text-[#1976D2] transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -285,7 +285,7 @@ export default function JournalPage() {
                         <button
                           onClick={() => handleDelete(entry._id)}
                           disabled={deleting === entry._id}
-                          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-500 transition-colors"
+                          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-500 transition-colors"
                         >
                           {deleting === entry._id ? (
                             <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
@@ -302,7 +302,7 @@ export default function JournalPage() {
                       <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2">{title}</h3>
                     )}
 
-                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-200 leading-relaxed line-clamp-3">
                       {preview || entry.content.slice(0, 120)}
                     </p>
 
@@ -328,7 +328,7 @@ export default function JournalPage() {
               className="text-center py-12"
             >
               <p className="text-4xl mb-3">🔍</p>
-              <p className="text-slate-500 text-sm">No entries matching &quot;{searchQuery}&quot;</p>
+              <p className="text-slate-500 dark:text-slate-300 text-sm">No entries matching &quot;{searchQuery}&quot;</p>
             </motion.div>
           )}
         </motion.div>
@@ -360,7 +360,7 @@ export default function JournalPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 ml-1 mb-2">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 ml-1 mb-2">
               Mood
             </label>
             <div className="grid grid-cols-5 gap-2">
@@ -372,7 +372,7 @@ export default function JournalPage() {
                   className={`flex flex-col items-center gap-0.5 p-2 rounded-xl text-xs font-medium transition-all duration-200 ${
                     form.mood === m.value
                       ? 'bg-gradient-to-br from-[#4FC3F7]/20 to-[#1976D2]/20 ring-2 ring-[#2196F3]/40 text-[#1976D2] shadow-sm'
-                      : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
                   <span className="text-lg">{m.emoji}</span>

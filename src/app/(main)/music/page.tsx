@@ -106,7 +106,7 @@ export default function MusicPage() {
     >
       <motion.div variants={item} className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Our Playlist</h1>
+          <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Our Playlist</h1>
           <p className="text-sm text-slate-400 mt-1">
             {(tracks || []).length} track{(tracks || []).length !== 1 ? 's' : ''}
           </p>
@@ -136,7 +136,7 @@ export default function MusicPage() {
           className={`flex items-center gap-1.5 px-4 py-3 rounded-2xl text-sm font-semibold border transition-all duration-200 ${
             favOnly
               ? 'bg-rose-50 text-rose-600 border-rose-200'
-              : 'bg-white/60 backdrop-blur-sm text-slate-500 border-white/40 hover:bg-white/80'
+              : 'bg-white/60 backdrop-blur-sm text-slate-500 dark:text-slate-300 border-white/40 hover:bg-white/80'
           }`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill={favOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -164,8 +164,8 @@ export default function MusicPage() {
                     </svg>
                   </motion.button>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-800 truncate">{track.title}</p>
-                    <p className="text-sm text-slate-500 truncate">{track.artist}</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{track.title}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300 truncate">{track.artist}</p>
                     <span
                       className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${pl.color}`}
                     >
@@ -257,7 +257,7 @@ export default function MusicPage() {
             required
           />
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-slate-700 ml-1">Platform</label>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 ml-1">Platform</label>
             <div className="flex gap-2">
               {(['spotify', 'youtube', 'apple'] as const).map((p) => {
                 const cfg = platformConfig[p];
@@ -269,7 +269,7 @@ export default function MusicPage() {
                     className={`flex-1 py-3 rounded-2xl text-sm font-semibold border transition-all duration-200 ${
                       formPlatform === p
                         ? 'bg-gradient-to-r from-[#4FC3F7] to-[#1976D2] text-white border-transparent shadow-md shadow-blue-400/25'
-                        : 'bg-white/60 backdrop-blur-sm text-slate-600 border-white/40 hover:bg-white/80'
+                        : 'bg-white/60 backdrop-blur-sm text-slate-600 dark:text-slate-200 border-white/40 hover:bg-white/80'
                     }`}
                   >
                     {cfg.icon} {cfg.label}

@@ -36,7 +36,7 @@ export default function Input({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-semibold text-slate-700 ml-1">
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 ml-1">
           {label} {required && <span className="text-red-400">*</span>}
         </label>
       )}
@@ -53,7 +53,7 @@ export default function Input({
           onChange={(e: any) => onChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            'w-full bg-white/80 backdrop-blur-md border border-white/50 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 focus:border-[#2196F3]/50 transition-all duration-200 shadow-sm',
+            'w-full bg-white/80 dark:bg-slate-700/80 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-2xl text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 focus:border-[#2196F3]/50 transition-all duration-200 shadow-sm',
             icon ? 'pl-10 pr-4' : 'px-4',
             multiline ? 'py-3' : 'py-3',
             multiline && 'resize-none',
