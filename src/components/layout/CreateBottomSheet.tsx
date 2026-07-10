@@ -5,10 +5,10 @@ import { motion } from 'framer-motion';
 
 const actions = [
   { title: 'New Memory', desc: "Save today's special moment.", icon: '📸', color: '#3B82F6', href: '/add-memory' },
-  { title: 'New Journal', desc: "Write today's thoughts and feelings.", icon: '📔', color: '#10B981', href: '/journal' },
-  { title: 'New Letter', desc: 'Write a letter for your future selves.', icon: '💌', color: '#EC4899', href: '/letters' },
-  { title: 'Time Capsule', desc: 'Lock memories until a future date.', icon: '🔮', color: '#8B5CF6', href: '/time-capsule' },
-  { title: 'Add Song', desc: 'Attach a song to your relationship.', icon: '🎵', color: '#F59E0B', href: '/music' },
+  { title: 'New Journal', desc: "Write today's thoughts and feelings.", icon: '📔', color: '#10B981', href: '/journal/new' },
+  { title: 'New Letter', desc: 'Write a letter for your future selves.', icon: '💌', color: '#EC4899', href: '/letters/new' },
+  { title: 'Time Capsule', desc: 'Lock memories until a future date.', icon: '🔮', color: '#8B5CF6', href: '/time-capsule/new' },
+  { title: 'Add Song', desc: 'Attach a song to your relationship.', icon: '🎵', color: '#F59E0B', href: '/music/new' },
   { title: 'Add Location', desc: 'Mark a special place on the map.', icon: '📍', color: '#14B8A6', href: '/map' },
 ];
 
