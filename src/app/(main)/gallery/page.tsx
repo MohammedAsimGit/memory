@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import GalleryGrid from '@/components/gallery/GalleryGrid';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
-import FloatingButton from '@/components/ui/FloatingButton';
 import { useApi } from '@/hooks/useApi';
 import type { Memory } from '@/types';
 
@@ -190,25 +189,7 @@ export default function GalleryPage() {
         )}
       </AnimatePresence>
 
-      <FloatingButton
-        onClick={() => router.push('/add-memory')}
-        icon={
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        }
-        className="fixed bottom-24 right-5 z-50"
-      />
+
     </motion.div>
   );
 }

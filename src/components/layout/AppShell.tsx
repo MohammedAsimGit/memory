@@ -1,11 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomNav from './BottomNav';
 import CloudBackground from './CloudBackground';
 import AppTopBar from './AppTopBar';
+import CreateBottomSheet from './CreateBottomSheet';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const [fabOpen, setFabOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#EAF6FF] dark:from-slate-900 via-[#EAF6FF]/70 dark:via-slate-900/70 to-white dark:to-slate-950 relative">
       <CloudBackground />
@@ -23,7 +27,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </motion.main>
       </AnimatePresence>
-      <BottomNav />
+
+      <AnimatePresence>
+        {fabOpen && <CreateBottomSheet isOpen={fabOpen} onClose={() => setFabOpen(false)} />}
+      </AnimatePresence>
+
+      <BottomNav fabOpen={fabOpen} onFabToggle={() => setFabOpen(!fabOpen)} />
     </div>
   );
 }

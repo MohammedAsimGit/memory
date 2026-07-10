@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import GreetingCard from '@/components/home/GreetingCard';
 import CountdownCard from '@/components/home/CountdownCard';
 import RecentMemories from '@/components/home/RecentMemories';
 import JournalWidget from '@/components/home/JournalWidget';
 import MusicWidget from '@/components/home/MusicWidget';
-import FloatingButton from '@/components/ui/FloatingButton';
 import { SectionTitle } from '@/components/ui/EmptyState';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useApi } from '@/hooks/useApi';
@@ -29,7 +27,6 @@ const item = {
 };
 
 export default function HomePage() {
-  const router = useRouter();
   const { data: settings, loading: settingsLoading } = useApi<Settings>('/settings');
   const { data: memories, loading: memoriesLoading } = useApi<Memory[]>('/memories');
   const { data: specialDays, loading: specialDaysLoading } = useApi<SpecialDay[]>('/special-days');
@@ -120,26 +117,6 @@ export default function HomePage() {
       <motion.section variants={item}>
         <MusicWidget tracks={tracks || []} />
       </motion.section>
-
-      <FloatingButton
-        onClick={() => router.push('/add-memory')}
-        icon={
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        }
-        className="fixed bottom-24 right-5 z-50"
-      />
     </motion.div>
   );
 }
