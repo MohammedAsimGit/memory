@@ -11,7 +11,7 @@ import AuthorAvatar from '@/components/post/AuthorAvatar';
 import { useApi, apiPost, apiDelete } from '@/hooks/useApi';
 import { useAuthStore } from '@/stores/auth';
 import { Letter } from '@/types';
-import { daysUntil, isPast, formatDate } from '@/lib/utils';
+import { daysUntil, formatDate } from '@/lib/utils';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -82,8 +82,6 @@ export default function LettersPage() {
     setTimeout(() => setShakeId(null), 800);
   };
 
-  const now = new Date().toISOString().slice(0, 10);
-
   return (
     <div className="space-y-5">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
@@ -124,15 +122,14 @@ export default function LettersPage() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           {letters.map((letter) => {
-            const isUnlocked = !isPast(letter.unlockDate) ? false : (letter.isLocked ? false : true);
-            const locked = !isUnlocked;
-            const days = daysUntil(letter.unlockDate);
+            const canOpen = new Date() >= new Date(letter.unlockDate);
             const isRevealed = revealedIds.has(letter._id);
+            const days = daysUntil(letter.unlockDate);
             const status: 'sealed' | 'ready' | 'opened' = isRevealed
               ? 'opened'
-              : locked
-                ? (days <= 0 ? 'ready' : 'sealed')
-                : 'ready';
+              : canOpen
+                ? 'ready'
+                : 'sealed';
 
             return (
               <motion.div
@@ -166,7 +163,7 @@ export default function LettersPage() {
                             exit={{ opacity: 0, scale: 0.9, y: -4 }}
                             className="absolute right-0 top-8 w-36 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden z-20"
                           >
-                            {!locked && !isRevealed && (
+                            {canOpen && !isRevealed && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleReveal(letter._id); }}
                                 className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-900/30 flex items-center gap-2 transition-colors"
@@ -188,7 +185,7 @@ export default function LettersPage() {
 
                     <button
                       onClick={() => {
-                        if (locked) {
+                        if (!canOpen) {
                           handleTapLocked(letter._id);
                         } else if (!isRevealed) {
                           handleReveal(letter._id);
@@ -220,7 +217,7 @@ export default function LettersPage() {
                         </span>
                       </div>
 
-                      {locked && days > 0 ? (
+                      {!canOpen && days > 0 ? (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200/50 dark:border-amber-700/30 text-xs font-semibold text-amber-700 dark:text-amber-300 shadow-sm">
                           <span>⏳</span> Opens in {days} {days === 1 ? 'day' : 'days'}
                         </div>
@@ -230,7 +227,7 @@ export default function LettersPage() {
                         </div>
                       ) : null}
 
-                      {locked && (
+                      {!canOpen && (
                         <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
                           Unlocks {formatDate(letter.unlockDate)}
                         </p>
@@ -252,14 +249,14 @@ export default function LettersPage() {
                           </div>
                         </motion.div>
                       )}
-                      {shakeId === letter._id && locked && (
+                      {shakeId === letter._id && !canOpen && (
                         <motion.p
                           initial={{ opacity: 0, y: 6 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0 }}
                           className="mt-3 text-xs text-amber-600 dark:text-amber-400 text-center italic px-2"
                         >
-                          This letter is still sealed. It will open {days <= 0 ? 'soon' : `on ${formatDate(letter.unlockDate)}`}.
+                          This letter is still sealed. It will unlock on {formatDate(letter.unlockDate)}.
                         </motion.p>
                       )}
                     </AnimatePresence>
@@ -276,7 +273,7 @@ export default function LettersPage() {
           <Input label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="Our first anniversary..." required />
           <Input label="Your Letter" value={form.content} onChange={(v) => setForm({ ...form, content: v })} placeholder="Write from your heart..." multiline rows={6} required />
           <Input label="Unlock Date" type="date" value={form.unlockDate} onChange={(v) => setForm({ ...form, unlockDate: v })} required />
-          {form.unlockDate && form.unlockDate <= now && (
+          {form.unlockDate && form.unlockDate <= new Date().toISOString().slice(0, 10) && (
             <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3">This date is now or past — the letter will unlock immediately.</p>
           )}
           <div className="flex gap-3 pt-2">

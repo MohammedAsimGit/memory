@@ -11,7 +11,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { useApi, apiPost, apiDelete } from '@/hooks/useApi';
 import { useAuthStore } from '@/stores/auth';
 import { TimeCapsule } from '@/types';
-import { daysUntil, isPast, formatDate } from '@/lib/utils';
+import { daysUntil, formatDate } from '@/lib/utils';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -231,7 +231,7 @@ export default function TimeCapsulePage() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           {capsules.map((capsule) => {
-            const locked = capsule.isLocked || isPast(capsule.unlockDate) === false;
+            const locked = new Date() < new Date(capsule.unlockDate);
             const isExpanded = expandedId === capsule._id;
 
             return (
