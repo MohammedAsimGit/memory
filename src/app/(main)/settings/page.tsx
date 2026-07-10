@@ -98,16 +98,22 @@ export default function SettingsPage() {
       addToast('New passwords do not match', 'error');
       return;
     }
-    if (newPassword.length < 6) {
-      addToast('Password must be at least 6 characters', 'error');
+    if (newPassword.length < 4) {
+      addToast('Password must be at least 4 characters', 'error');
       return;
     }
     setSaving(true);
     try {
-      await apiPut('/settings/password', {
-        currentPassword,
-        newPassword,
+      const res = await fetch('/api/settings/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        addToast(data.error || 'Failed to change password', 'error');
+        return;
+      }
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
