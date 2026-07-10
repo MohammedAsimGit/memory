@@ -121,4 +121,14 @@ export interface Stats {
   daysTogether: number;
   totalLetters: number;
   totalCapsules: number;
+  myMemories: number;
+  herMemories: number;
+  myPhotos: number;
+  herPhotos: number;
+  myJournals: number;
+  herJournals: number;
+  myLetters: number;
+  herLetters: number;
+  myCapsules: number;
+  herCapsules: number;
 }

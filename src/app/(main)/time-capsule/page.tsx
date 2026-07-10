@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { useApi, apiPost, apiDelete } from '@/hooks/useApi';
+import { useAuthStore } from '@/stores/auth';
 import { TimeCapsule } from '@/types';
 import { daysUntil, isPast, formatDate } from '@/lib/utils';
 
@@ -108,6 +109,7 @@ function LiveCountdown({ targetDate }: { targetDate: string }) {
 
 export default function TimeCapsulePage() {
   const { data: capsules, loading, refetch } = useApi<TimeCapsule[]>('/time-capsule');
+  const activeProfile = useAuthStore((s) => s.activeProfile);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -129,7 +131,7 @@ export default function TimeCapsulePage() {
     if (!form.title || !form.content || !form.unlockDate) return;
     setSubmitting(true);
     try {
-      await apiPost('/time-capsule', form);
+      await apiPost('/time-capsule', { ...form, author: activeProfile || 'me' });
       await refetch();
       resetForm();
     } catch {

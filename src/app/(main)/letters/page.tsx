@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { useApi, apiPost, apiDelete } from '@/hooks/useApi';
+import { useAuthStore } from '@/stores/auth';
 import { Letter } from '@/types';
 import { daysUntil, isPast, formatDate } from '@/lib/utils';
 
@@ -83,6 +84,7 @@ function CountdownBadge({ days }: { days: number }) {
 
 export default function LettersPage() {
   const { data: letters, loading, refetch } = useApi<Letter[]>('/letters');
+  const activeProfile = useAuthStore((s) => s.activeProfile);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -103,7 +105,7 @@ export default function LettersPage() {
     if (!form.title || !form.content || !form.unlockDate) return;
     setSubmitting(true);
     try {
-      await apiPost('/letters', form);
+      await apiPost('/letters', { ...form, author: activeProfile || 'me' });
       await refetch();
       resetForm();
     } catch {

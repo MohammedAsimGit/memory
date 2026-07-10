@@ -5,6 +5,7 @@ import GlassCard from '@/components/ui/Card';
 import PostHeader from '@/components/post/PostHeader';
 import { Memory } from '@/types';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export default function TimelineCard({ memory, index }: { memory: Memory; index: number }) {
   const router = useRouter();
@@ -23,6 +24,10 @@ export default function TimelineCard({ memory, index }: { memory: Memory; index:
       <GlassCard
         onClick={() => router.push(`/memory/${memory._id}`)}
         padding="md"
+        className={cn(
+          (memory.author === undefined || memory.author === 'me') && 'border-l-[3px] border-l-sky-400',
+          memory.author === 'her' && 'border-l-[3px] border-l-purple-400'
+        )}
       >
         <PostHeader
           author={memory.author || 'me'}

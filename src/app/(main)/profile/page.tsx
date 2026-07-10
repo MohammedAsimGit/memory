@@ -128,6 +128,81 @@ export default function ProfilePage() {
         ))}
       </motion.div>
 
+      {/* ── Contributions ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 px-1">
+          Your Contributions
+        </h2>
+        <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+          {[
+            { key: 'myMemories', label: `${name1}'s Memories`, icon: '📸', tint: 'blue' as const },
+            { key: 'myPhotos', label: `${name1}'s Photos`, icon: '🖼️', tint: 'blue' as const },
+            { key: 'myJournals', label: `${name1}'s Journals`, icon: '📝', tint: 'blue' as const },
+          ].map((s, i) => (
+            <motion.div
+              key={s.key}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 + i * 0.05 }}
+              className="bg-white dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-3 text-center border shadow-md"
+              style={{
+                borderColor: 'rgba(33, 150, 243, 0.25)',
+                background: 'rgba(33, 150, 243, 0.06)',
+              }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-base mx-auto mb-1.5 shadow-sm"
+                style={{ background: 'rgba(33, 150, 243, 0.15)' }}
+              >
+                {s.icon}
+              </div>
+              <p className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-none">
+                {(stats as any)?.[s.key] ?? 0}
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                {s.label}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { key: 'herMemories', label: `${name2}'s Memories`, icon: '💜', tint: 'purple' as const },
+            { key: 'herPhotos', label: `${name2}'s Photos`, icon: '🖼️', tint: 'purple' as const },
+            { key: 'herJournals', label: `${name2}'s Journals`, icon: '📝', tint: 'purple' as const },
+          ].map((s, i) => (
+            <motion.div
+              key={s.key}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.35 + i * 0.05 }}
+              className="bg-white dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-3 text-center border shadow-md"
+              style={{
+                borderColor: 'rgba(139, 92, 246, 0.25)',
+                background: 'rgba(139, 92, 246, 0.06)',
+              }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-base mx-auto mb-1.5 shadow-sm"
+                style={{ background: 'rgba(139, 92, 246, 0.15)' }}
+              >
+                {s.icon}
+              </div>
+              <p className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-none">
+                {(stats as any)?.[s.key] ?? 0}
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                {s.label}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
       {/* ── Navigation Grid ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}

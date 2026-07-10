@@ -14,6 +14,7 @@ interface PostHeaderProps {
   showBadge?: boolean;
   onMenuClick?: () => void;
   className?: string;
+  displayName?: string;
 }
 
 export default function PostHeader({
@@ -25,6 +26,7 @@ export default function PostHeader({
   showBadge = true,
   onMenuClick,
   className,
+  displayName,
 }: PostHeaderProps) {
   return (
     <motion.div
@@ -43,7 +45,7 @@ export default function PostHeader({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-            {author === 'me' ? 'Asim' : author}
+            {author === 'me' ? (displayName || 'Asim') : author}
           </span>
           {showBadge && <AuthorBadge name={author} />}
         </div>

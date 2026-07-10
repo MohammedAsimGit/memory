@@ -44,6 +44,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [yearFilter, setYearFilter] = useState<string | null>(null);
   const [moodFilter, setMoodFilter] = useState<string | null>(null);
+  const [authorFilter, setAuthorFilter] = useState<'all' | 'me' | 'her'>('all');
 
   const years = useCallback(() => {
     if (!memories) return [];
@@ -85,6 +86,10 @@ export default function SearchPage() {
 
     if (moodFilter) {
       results = results.filter((m) => m.mood === moodFilter);
+    }
+
+    if (authorFilter !== 'all') {
+      results = results.filter((m) => (m.author || 'me') === authorFilter);
     }
 
     return results.sort(
@@ -158,6 +163,27 @@ export default function SearchPage() {
           ))}
         </motion.div>
       )}
+
+      <motion.div variants={item} className="flex gap-2 mb-3">
+        {(['all', 'me', 'her'] as const).map((a) => (
+          <motion.button
+            key={a}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setAuthorFilter(a)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+              authorFilter === a
+                ? a === 'me'
+                  ? 'bg-gradient-to-r from-[#4FC3F7] to-[#2196F3] text-white shadow-md shadow-blue-400/25'
+                  : a === 'her'
+                  ? 'bg-gradient-to-r from-[#C084FC] to-[#A855F7] text-white shadow-md shadow-purple-400/25'
+                  : 'bg-gradient-to-r from-[#4FC3F7] to-[#1976D2] text-white shadow-md shadow-blue-400/25'
+                : 'bg-white/60 backdrop-blur-sm text-slate-600 border border-white/40 hover:bg-white/80'
+            }`}
+          >
+            {a === 'me' ? '🩵 Mine' : a === 'her' ? '💜 Hers' : 'All'}
+          </motion.button>
+        ))}
+      </motion.div>
 
       {moodList.length > 0 && (
         <motion.div variants={item} className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide">

@@ -129,42 +129,6 @@ export default function MemoryForm({ initialData, onSubmit, onCancel, loading }:
         error={errors.title}
       />
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700 ml-1 mb-2">Who</label>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => update('author', 'me')}
-            className={`flex-1 flex items-center gap-3 p-3 rounded-2xl border-2 transition-all ${
-              form.author === 'me'
-                ? 'border-sky-400 bg-sky-50 dark:bg-sky-900/20'
-                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50'
-            }`}
-          >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#4FC3F7] to-[#2196F3] flex items-center justify-center text-xs font-bold text-white shadow-md">Me</div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">You</p>
-              <p className="text-[10px] text-slate-400">Your memories</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => update('author', 'her')}
-            className={`flex-1 flex items-center gap-3 p-3 rounded-2xl border-2 transition-all ${
-              form.author === 'her'
-                ? 'border-purple-400 bg-purple-50 dark:bg-purple-900/20'
-                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50'
-            }`}
-          >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C084FC] to-[#A855F7] flex items-center justify-center text-xs font-bold text-white shadow-md">H</div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Her</p>
-              <p className="text-[10px] text-slate-400">Her memories</p>
-            </div>
-          </button>
-        </div>
-      </div>
-
       <Input
         label="Description"
         required

@@ -6,10 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MemoryForm from '@/components/memory/MemoryForm';
 import { MemoryFormData } from '@/components/memory/MemoryForm';
 import { apiPost } from '@/hooks/useApi';
+import { useAuthStore } from '@/stores/auth';
 import type { Memory } from '@/types';
 
 export default function AddMemoryPage() {
   const router = useRouter();
+  const activeProfile = useAuthStore((s) => s.activeProfile);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -21,7 +23,7 @@ export default function AddMemoryPage() {
   const handleSubmit = async (formData: MemoryFormData) => {
     setLoading(true);
     try {
-      await apiPost<Memory>('/memories', formData);
+      await apiPost<Memory>('/memories', { ...formData, author: activeProfile || 'me' });
       showToast('Memory saved successfully!', 'success');
       setTimeout(() => router.push('/timeline'), 700);
     } catch {

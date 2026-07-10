@@ -12,6 +12,7 @@ import FloatingButton from '@/components/ui/FloatingButton';
 import { SectionTitle } from '@/components/ui/EmptyState';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useApi } from '@/hooks/useApi';
+import { useAuthStore } from '@/stores/auth';
 import type { Memory, SpecialDay, JournalEntry, MusicTrack, Settings } from '@/types';
 import { daysBetween, getRandomQuote, daysUntil, isToday } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ const item = {
 
 export default function HomePage() {
   const router = useRouter();
+  const activeProfile = useAuthStore((s) => s.activeProfile);
   const { data: settings, loading: settingsLoading } = useApi<Settings>('/settings');
   const { data: memories, loading: memoriesLoading } = useApi<Memory[]>('/memories');
   const { data: specialDays, loading: specialDaysLoading } = useApi<SpecialDay[]>('/special-days');
@@ -37,9 +39,14 @@ export default function HomePage() {
   const { data: tracks, loading: tracksLoading } = useApi<MusicTrack[]>('/music');
 
   const [quote, setQuote] = useState({ text: '', author: '' });
+  const [timeGreeting, setTimeGreeting] = useState('');
 
   useEffect(() => {
     setQuote(getRandomQuote());
+    const hour = new Date().getHours();
+    if (hour < 12) setTimeGreeting('Good Morning');
+    else if (hour < 18) setTimeGreeting('Good Afternoon');
+    else setTimeGreeting('Good Evening');
   }, []);
 
   const loading =
@@ -47,6 +54,10 @@ export default function HomePage() {
   const daysTogether = settings?.relationshipStartDate
     ? daysBetween(settings.relationshipStartDate)
     : 0;
+
+  const displayName = activeProfile === 'me'
+    ? (settings?.partnerName1 || 'Asim')
+    : (settings?.partnerName2 || 'My Love');
 
   const sortedSpecialDays = (specialDays || [])
     .slice()
@@ -73,6 +84,18 @@ export default function HomePage() {
       animate="show"
       className="pb-24 space-y-6"
     >
+      <motion.div variants={item}>
+        <div className="mb-2">
+          <h2 className="text-lg font-semibold text-slate-500 dark:text-slate-400">
+            {timeGreeting}
+          </h2>
+          <h1 className="text-[28px] font-black text-slate-800 dark:text-slate-100 tracking-tight">
+            {displayName} <span className="text-gradient">❤️</span>
+          </h1>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">Welcome back</p>
+        </div>
+      </motion.div>
+
       <motion.div variants={item}>
         {settings && (
           <GreetingCard

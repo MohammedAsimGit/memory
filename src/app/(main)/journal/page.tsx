@@ -10,8 +10,9 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
 import PostHeader from '@/components/post/PostHeader';
 import { useApi, apiPost, apiPut, apiDelete } from '@/hooks/useApi';
+import { useAuthStore } from '@/stores/auth';
 import { JournalEntry } from '@/types';
-import { formatDate, formatTime } from '@/lib/utils';
+import { cn, formatDate, formatTime } from '@/lib/utils';
 
 const moodOptions: { value: string; emoji: string; label: string }[] = [
   { value: 'happy', emoji: '😊', label: 'Happy' },
@@ -65,6 +66,7 @@ const cardVariants = {
 
 export default function JournalPage() {
   const { data: entries, loading, refetch } = useApi<JournalEntry[]>('/journal');
+  const activeProfile = useAuthStore((s) => s.activeProfile);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
@@ -123,6 +125,7 @@ export default function JournalPage() {
         time: form.time,
         mood: form.mood || undefined,
         content: combined,
+        author: activeProfile || 'me',
       };
       if (editingEntry) {
         await apiPut(`/journal/${editingEntry._id}`, payload);
@@ -254,7 +257,14 @@ export default function JournalPage() {
                   exit="exit"
                   layout
                 >
-                  <GlassCard padding="md" className="relative overflow-hidden">
+                  <GlassCard
+                    padding="md"
+                    className={cn(
+                      'relative overflow-hidden',
+                      (entry.author === undefined || entry.author === 'me') && 'border-l-[3px] border-l-sky-400',
+                      entry.author === 'her' && 'border-l-[3px] border-l-purple-400'
+                    )}
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <PostHeader
                         author={entry.author || 'me'}
