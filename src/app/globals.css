@@ -104,6 +104,14 @@
   .h-safe-bottom {
     height: env(safe-area-inset-bottom, 0px);
   }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes float {

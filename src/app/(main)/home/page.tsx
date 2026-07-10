@@ -2,121 +2,142 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import GreetingCard from '@/components/home/GreetingCard';
-import CountdownCard from '@/components/home/CountdownCard';
-import RecentMemories from '@/components/home/RecentMemories';
-import JournalWidget from '@/components/home/JournalWidget';
-import MusicWidget from '@/components/home/MusicWidget';
-import { SectionTitle } from '@/components/ui/EmptyState';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useApi } from '@/hooks/useApi';
-import type { Memory, SpecialDay, JournalEntry, MusicTrack, Settings } from '@/types';
-import { daysBetween, getRandomQuote, daysUntil, isToday } from '@/lib/utils';
+import type { Memory, JournalEntry, MusicTrack, Settings, Letter } from '@/types';
+import { daysBetween, daysUntil } from '@/lib/utils';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+
+import HeroCard from '@/components/home/HeroCard';
+import QuickStats from '@/components/home/QuickStats';
+import OnThisDayCard, { OnThisDayEmpty } from '@/components/home/OnThisDayCard';
+import RecentMemoriesCarousel from '@/components/home/RecentMemoriesCarousel';
+import ContinueWriting from '@/components/home/ContinueWriting';
+import MusicCard from '@/components/home/MusicCard';
+import LocationCard from '@/components/home/LocationCard';
+import UpcomingLetter from '@/components/home/UpcomingLetter';
+import DailyQuote from '@/components/home/DailyQuote';
 
 const container = {
   hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
+  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
 };
-
-const item = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const } },
-};
+const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function HomePage() {
-  const { data: settings, loading: settingsLoading } = useApi<Settings>('/settings');
-  const { data: memories, loading: memoriesLoading } = useApi<Memory[]>('/memories');
-  const { data: specialDays, loading: specialDaysLoading } = useApi<SpecialDay[]>('/special-days');
-  const { data: journals, loading: journalsLoading } = useApi<JournalEntry[]>('/journals');
-  const { data: tracks, loading: tracksLoading } = useApi<MusicTrack[]>('/music');
+  const { data: settings, loading: sLoading } = useApi<Settings>('/settings');
+  const { data: memories } = useApi<Memory[]>('/memories');
+  const { data: journals } = useApi<JournalEntry[]>('/journal');
+  const { data: tracks } = useApi<MusicTrack[]>('/music');
+  const { data: letters } = useApi<Letter[]>('/letters');
 
-  const [quote, setQuote] = useState({ text: '', author: '' });
+  const loading = sLoading;
 
-  useEffect(() => {
-    setQuote(getRandomQuote());
-  }, []);
-
-  const loading =
-    settingsLoading && memoriesLoading && specialDaysLoading && journalsLoading && tracksLoading;
   const daysTogether = settings?.relationshipStartDate
     ? daysBetween(settings.relationshipStartDate)
     : 0;
 
-  const sortedSpecialDays = (specialDays || [])
-    .slice()
-    .sort((a, b) => {
-      const aToday = isToday(a.date);
-      const bToday = isToday(b.date);
-      if (aToday && !bToday) return -1;
-      if (!aToday && bToday) return 1;
-      return daysUntil(a.date) - daysUntil(b.date);
-    });
+  const startDate = settings?.relationshipStartDate
+    ? new Date(settings.relationshipStartDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : undefined;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayMem = (memories || []).filter((m) => m.date === todayStr && !m.date.includes(String(new Date().getFullYear())));
+  const oldestTodayMem = (memories || []).find((m) => {
+    const d = m.date.slice(5);
+    return d === todayStr.slice(5) && m.date.slice(0, 4) !== String(new Date().getFullYear());
+  });
+
+  const latestMemory = (memories || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  const latestMusic = (tracks || []).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  const latestJournal = (journals || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+  const upcomingLetters = (letters || [])
+    .filter((l) => l.isLocked)
+    .sort((a, b) => new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime());
+
+  const statCards = [
+    { label: 'Memories', value: memories?.length || 0, icon: '📸', color: '#6366F1' },
+    { label: 'Photos', value: (memories || []).reduce((c, m) => c + (m.images?.length || 0), 0), icon: '🖼️', color: '#EC4899' },
+    { label: 'Journals', value: journals?.length || 0, icon: '📔', color: '#10B981' },
+    { label: 'Music', value: tracks?.length || 0, icon: '🎵', color: '#F59E0B' },
+  ];
 
   if (loading) {
-    return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+    return <div className="min-h-[80vh] flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
   }
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="pb-24 space-y-6"
-    >
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-5 pb-4">
       <motion.div variants={item}>
-        {settings && (
-          <GreetingCard
-            daysTogether={daysTogether}
-            partnerName1={settings.partnerName1}
-            partnerName2={settings.partnerName2}
+        <HeroCard
+          partnerName1={settings?.partnerName1 || 'Asim'}
+          partnerName2={settings?.partnerName2 || 'My Love'}
+          daysTogether={daysTogether}
+          startDate={startDate}
+        />
+      </motion.div>
+
+      <motion.div variants={item}>
+        <QuickStats stats={statCards} />
+      </motion.div>
+
+      <motion.div variants={item}>
+        {oldestTodayMem ? (
+          <OnThisDayCard
+            yearsAgo={new Date().getFullYear() - new Date(oldestTodayMem.date).getFullYear()}
+            title={oldestTodayMem.title}
+            description={oldestTodayMem.description || ''}
+            location={oldestTodayMem.location}
+            memoryId={oldestTodayMem._id}
           />
+        ) : (
+          <OnThisDayEmpty />
         )}
       </motion.div>
 
-      <motion.div
-        variants={item}
-        className="py-1 text-center"
-      >
-        <p className="text-slate-400 dark:text-slate-400 italic text-sm leading-relaxed">
-          &ldquo;{quote.text}&rdquo;
-        </p>
-        <p className="text-slate-300 text-xs mt-1.5">— {quote.author}</p>
+      <motion.div variants={item}>
+        <RecentMemoriesCarousel memories={memories || []} />
       </motion.div>
 
-      {sortedSpecialDays.length > 0 && (
-        <motion.section variants={item}>
-          <SectionTitle>Special Days</SectionTitle>
-          <div className="space-y-2.5">
-            {sortedSpecialDays.map((day) => (
-              <CountdownCard
-                key={day._id}
-                title={day.title}
-                date={day.date}
-                icon={day.icon}
-              />
-            ))}
-          </div>
-        </motion.section>
+      <motion.div variants={item}>
+        <ContinueWriting
+          journalDraft={latestJournal ? { title: `Journal · ${latestJournal.date}`, preview: latestJournal.content.slice(0, 80) + '...' } : null}
+        />
+      </motion.div>
+
+      <motion.div variants={item}>
+        <MusicCard
+          track={latestMusic ? {
+            _id: latestMusic._id,
+            title: latestMusic.title,
+            artist: latestMusic.artist,
+            author: 'me',
+            url: latestMusic.url,
+          } : null}
+        />
+      </motion.div>
+
+      <motion.div variants={item}>
+        <LocationCard
+          location={latestMemory?.location}
+          date={latestMemory?.date}
+          memoryId={latestMemory?._id}
+        />
+      </motion.div>
+
+      {upcomingLetters.length > 0 && (
+        <motion.div variants={item}>
+          <UpcomingLetter
+            title={upcomingLetters[0]?.title}
+            author={upcomingLetters[0]?.author}
+            days={daysUntil(upcomingLetters[0]?.unlockDate)}
+          />
+        </motion.div>
       )}
 
-      <motion.section variants={item}>
-        <RecentMemories memories={memories || []} />
-      </motion.section>
-
-      <motion.section variants={item}>
-        <JournalWidget entries={journals || []} />
-      </motion.section>
-
-      <motion.section variants={item}>
-        <MusicWidget tracks={tracks || []} />
-      </motion.section>
+      <motion.div variants={item}>
+        <DailyQuote />
+      </motion.div>
     </motion.div>
   );
 }
