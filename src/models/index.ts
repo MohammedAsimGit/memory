@@ -8,6 +8,7 @@ export interface IMemory extends Document {
   location?: string;
   mood?: string;
   weather?: string;
+  author?: string;
   images: string[];
   videos: string[];
   voiceNotes: string[];
@@ -27,6 +28,7 @@ const MemorySchema = new Schema<IMemory>(
     location: { type: String },
     mood: { type: String },
     weather: { type: String },
+    author: { type: String, default: 'me' },
     images: [{ type: String }],
     videos: [{ type: String }],
     voiceNotes: [{ type: String }],
@@ -59,6 +61,7 @@ export interface IJournal extends Document {
   content: string;
   mood?: string;
   photo?: string;
+  author?: string;
 }
 
 const JournalSchema = new Schema<IJournal>(
@@ -68,6 +71,7 @@ const JournalSchema = new Schema<IJournal>(
     content: { type: String, required: true },
     mood: { type: String },
     photo: { type: String },
+    author: { type: String, default: 'me' },
   },
   { timestamps: true }
 );
@@ -111,6 +115,7 @@ export interface ILetter extends Document {
   content: string;
   unlockDate: string;
   isLocked: boolean;
+  author?: string;
 }
 
 const LetterSchema = new Schema<ILetter>(
@@ -119,6 +124,7 @@ const LetterSchema = new Schema<ILetter>(
     content: { type: String, required: true },
     unlockDate: { type: String, required: true },
     isLocked: { type: Boolean, default: true },
+    author: { type: String, default: 'me' },
   },
   { timestamps: true }
 );
@@ -132,6 +138,7 @@ export interface ITimeCapsule extends Document {
   images: string[];
   unlockDate: string;
   isLocked: boolean;
+  author?: string;
 }
 
 const TimeCapsuleSchema = new Schema<ITimeCapsule>(
@@ -141,6 +148,7 @@ const TimeCapsuleSchema = new Schema<ITimeCapsule>(
     images: [{ type: String }],
     unlockDate: { type: String, required: true },
     isLocked: { type: Boolean, default: true },
+    author: { type: String, default: 'me' },
   },
   { timestamps: true }
 );

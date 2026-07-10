@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
+import PostHeader from '@/components/post/PostHeader';
 import { useApi, apiPost, apiPut, apiDelete } from '@/hooks/useApi';
 import { JournalEntry } from '@/types';
 import { formatDate, formatTime } from '@/lib/utils';
@@ -255,26 +256,17 @@ export default function JournalPage() {
                 >
                   <GlassCard padding="md" className="relative overflow-hidden">
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4FC3F7]/15 to-[#1976D2]/15 flex items-center justify-center text-xl">
-                          {moodEmoji || '📝'}
-                        </div>
-                        <div>
-                          {title && (
-                            <h3 className="font-bold text-slate-800 leading-tight">
-                              {title}
-                            </h3>
-                          )}
-                          <p className="text-xs text-slate-400">
-                            {formatDate(entry.date)}{entry.time ? ` at ${formatTime(entry.time)}` : ''}
-                          </p>
-                        </div>
-                      </div>
+                      <PostHeader
+                        author={entry.author || 'me'}
+                        date={entry.date}
+                        time={entry.time}
+                        mood={entry.mood}
+                      />
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 ml-2 mt-1">
                         <button
                           onClick={() => openEdit(entry)}
-                          className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-sky-100 hover:text-[#1976D2] transition-colors"
+                          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-sky-100 dark:hover:bg-sky-900/40 hover:text-[#1976D2] transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -283,7 +275,7 @@ export default function JournalPage() {
                         <button
                           onClick={() => handleDelete(entry._id)}
                           disabled={deleting === entry._id}
-                          className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-red-100 hover:text-red-500 transition-colors"
+                          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-500 transition-colors"
                         >
                           {deleting === entry._id ? (
                             <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
@@ -296,13 +288,11 @@ export default function JournalPage() {
                       </div>
                     </div>
 
-                    {entry.mood && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-xs font-semibold text-sky-700 mb-2">
-                        {moodEmoji} {getMoodLabel(entry.mood)}
-                      </span>
+                    {title && (
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2">{title}</h3>
                     )}
 
-                    <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
                       {preview || entry.content.slice(0, 120)}
                     </p>
 

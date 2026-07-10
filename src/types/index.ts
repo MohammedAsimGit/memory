@@ -7,6 +7,7 @@ export interface Memory {
   location?: string;
   mood?: string;
   weather?: string;
+  author?: string;
   images: string[];
   videos: string[];
   voiceNotes: string[];
@@ -32,6 +33,7 @@ export interface JournalEntry {
   content: string;
   mood?: string;
   photo?: string;
+  author?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,6 +56,7 @@ export interface Letter {
   content: string;
   unlockDate: string;
   isLocked: boolean;
+  author?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +68,7 @@ export interface TimeCapsule {
   images: string[];
   unlockDate: string;
   isLocked: boolean;
+  author?: string;
   createdAt: string;
   updatedAt: string;
 }
