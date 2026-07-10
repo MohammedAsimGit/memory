@@ -68,7 +68,7 @@ export default function HomePage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-5 pb-4">
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full">
         <HeroCard
           partnerName1={settings?.partnerName1 || 'Asim'}
           partnerName2={settings?.partnerName2 || 'My Love'}
@@ -77,11 +77,11 @@ export default function HomePage() {
         />
       </motion.div>
 
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full">
         <QuickStats stats={statCards} />
       </motion.div>
 
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full">
         {oldestTodayMem ? (
           <OnThisDayCard
             yearsAgo={new Date().getFullYear() - new Date(oldestTodayMem.date).getFullYear()}
@@ -95,11 +95,11 @@ export default function HomePage() {
         )}
       </motion.div>
 
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full">
         <RecentMemoriesCarousel memories={memories || []} />
       </motion.div>
 
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full">
         <ContinueWriting
           journalDraft={latestJournal ? {
             title: `Journal · ${latestJournal.date}`,
@@ -111,7 +111,7 @@ export default function HomePage() {
         />
       </motion.div>
 
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full">
         <MusicCard
           track={latestMusic ? {
             _id: latestMusic._id,
@@ -123,7 +123,7 @@ export default function HomePage() {
         />
       </motion.div>
 
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full">
         <LocationCard
           location={latestMemory?.location}
           date={latestMemory?.date}
@@ -132,7 +132,7 @@ export default function HomePage() {
       </motion.div>
 
       {upcomingLetters.length > 0 && (
-        <motion.div variants={item}>
+        <motion.div variants={item} className="w-full">
           <UpcomingLetter
             title={upcomingLetters[0]?.title}
             author={upcomingLetters[0]?.author}
@@ -141,7 +141,7 @@ export default function HomePage() {
         </motion.div>
       )}
 
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full">
         <DailyQuote />
       </motion.div>
     </motion.div>

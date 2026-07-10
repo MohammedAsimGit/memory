@@ -10,7 +10,7 @@ export default function QuickStats({ stats }: { stats: StatCard[] }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.4 }}
-      className="grid grid-cols-4 gap-2.5"
+      className="grid grid-cols-4 gap-2.5 w-full"
     >
       {stats.map((s, i) => (
         <motion.div

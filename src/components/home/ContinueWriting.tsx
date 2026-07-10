@@ -21,7 +21,7 @@ export default function ContinueWriting({ journalDraft }: ContinueWritingProps) 
   if (!journalDraft) {
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="w-full">
-        <GlassCard padding="md" className="w-full text-center py-6 overflow-hidden">
+        <GlassCard padding="md" className="w-full text-center py-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-800/30 flex items-center justify-center text-2xl mx-auto mb-3 shadow-sm">
             📔
           </div>
@@ -44,30 +44,28 @@ export default function ContinueWriting({ journalDraft }: ContinueWritingProps) 
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="w-full">
-      <GlassCard padding="md" onClick={() => router.push('/journal')} className="w-full overflow-hidden">
-        <div className="flex items-start gap-3 min-w-0">
+      <GlassCard padding="md" onClick={() => router.push('/journal')} className="w-full">
+        <div className="flex items-center gap-4 min-w-0">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-800/30 flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
             📔
           </div>
-          <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex-1 min-w-0">
             <p className="text-[10px] font-semibold text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-0.5">
               Latest Journal
             </p>
             <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">
               {journalDraft.title}
             </p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 line-clamp-2 mt-0.5">
               {journalDraft.preview}
             </p>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-1.5">
               <AuthorAvatar name={journalDraft.author || 'me'} size="sm" />
               <span className="text-[10px] text-slate-400 dark:text-slate-500">{journalDraft.date}</span>
               {journalDraft.mood && <span className="text-xs">{journalDraft.mood}</span>}
             </div>
-            <p className="text-[11px] font-semibold text-[#2196F3] dark:text-sky-400 mt-2 hover:underline">
-              Continue Reading →
-            </p>
           </div>
+          <span className="text-lg text-slate-300 dark:text-slate-600 flex-shrink-0">›</span>
         </div>
       </GlassCard>
     </motion.div>

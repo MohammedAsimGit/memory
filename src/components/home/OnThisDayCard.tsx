@@ -20,6 +20,7 @@ export default function OnThisDay({ yearsAgo, title, description, location, memo
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
+      className="w-full"
     >
       <GlassCard padding="md" className="relative overflow-hidden">
         <div className="absolute top-0 right-0 text-6xl opacity-5 select-none">🕰️</div>
@@ -58,6 +59,7 @@ export function OnThisDayEmpty() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
+      className="w-full"
     >
       <GlassCard padding="md" className="text-center py-6">
         <p className="text-3xl mb-2">🕰️</p>

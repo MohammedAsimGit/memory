@@ -17,12 +17,13 @@ export default function RecentMemoriesCarousel({ memories }: { memories: Memory[
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.45 }}
+      className="w-full"
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Recent Memories</h3>
         <button onClick={() => router.push('/timeline')} className="text-[11px] font-semibold text-sky-500 hover:underline">View All</button>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory hide-scrollbar">
+      <div className="flex gap-3 overflow-x-auto py-1 snap-x snap-mandatory hide-scrollbar">
         {memories.slice(0, 8).map((m, i) => (
           <motion.button
             key={m._id}

@@ -25,7 +25,7 @@ export default function DailyQuote() {
   }, []);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="w-full">
       <GlassCard padding="md" className="text-center py-5">
         <p className="text-xs font-semibold text-rose-400 dark:text-rose-300 uppercase tracking-wider mb-3">
           ❤️ Quote of the Day

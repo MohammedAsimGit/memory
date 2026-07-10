@@ -8,7 +8,7 @@ interface MusicTrack { _id: string; title: string; artist: string; author?: stri
 export default function MusicCard({ track }: { track?: MusicTrack | null }) {
   if (!track) {
     return (
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="w-full">
         <GlassCard padding="md" className="text-center py-6">
           <p className="text-2xl mb-1">🎵</p>
           <p className="text-sm text-slate-500 dark:text-slate-400">Add songs to your playlist</p>
@@ -18,7 +18,7 @@ export default function MusicCard({ track }: { track?: MusicTrack | null }) {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="w-full">
       <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-3">🎵 Our Playlist</h3>
       <GlassCard padding="md">
         <div className="flex items-center gap-3">

@@ -15,7 +15,7 @@ export default function LocationCard({ location, date, memoryId }: LocationCardP
 
   if (!location) {
     return (
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="w-full">
         <GlassCard padding="md" className="text-center py-6">
           <p className="text-2xl mb-1">📍</p>
           <p className="text-sm text-slate-500 dark:text-slate-400">No locations saved yet</p>
@@ -25,7 +25,7 @@ export default function LocationCard({ location, date, memoryId }: LocationCardP
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="w-full">
       <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-3">📍 Last Place</h3>
       <GlassCard padding="md" onClick={() => memoryId ? router.push(`/memory/${memoryId}`) : router.push('/map')}>
         <div className="flex items-center gap-3">

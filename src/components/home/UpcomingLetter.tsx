@@ -14,7 +14,7 @@ export default function UpcomingLetter({ title, author, days }: UpcomingLetterPr
   if (!title || days <= 0) return null;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }} className="w-full">
       <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-3">💌 Next Letter</h3>
       <GlassCard padding="md">
         <div className="flex items-center gap-3">
