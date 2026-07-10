@@ -26,6 +26,7 @@ export default function AppTopBar() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
       className="fixed top-0 left-0 right-0 z-50"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <div className="bg-white/75 dark:bg-slate-900/80 backdrop-blur-2xl border-b border-[#D6EFFF]/80 dark:border-sky-500/15 shadow-lg shadow-sky-100/20 dark:shadow-black/20">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">

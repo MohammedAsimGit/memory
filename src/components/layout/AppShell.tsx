@@ -17,7 +17,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.25 }}
-          className="pb-24 pt-16 px-4 max-w-2xl mx-auto relative z-10"
+          className="pb-28 pt-[5rem] xs:pt-[5.5rem] sm:pt-24 px-5 sm:px-6 max-w-2xl mx-auto relative z-10"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4.5rem)' }}
         >
           {children}
         </motion.main>
