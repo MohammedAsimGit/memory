@@ -32,69 +32,118 @@ async function loadJsPDF() {
 const UNSUPPORTED_COLOR_REGEX =
   /\b(lab|oklab|lch|oklch|color-mix|color)\s*\(/i;
 
-const CSS_COLOR_PROPS: (keyof CSSStyleDeclaration)[] = [
+const CSS_COLOR_PROPS: string[] = [
   'color',
-  'backgroundColor',
-  'borderColor',
-  'borderTopColor',
-  'borderRightColor',
-  'borderBottomColor',
-  'borderLeftColor',
-  'outlineColor',
-  'textDecorationColor',
+  'background-color',
+  'border-color',
+  'border-top-color',
+  'border-right-color',
+  'border-bottom-color',
+  'border-left-color',
+  'outline-color',
+  'text-decoration-color',
   'fill',
   'stroke',
-  'stopColor',
-  'floodColor',
-  'lightingColor',
-  'backgroundImage',
+  'stop-color',
+  'flood-color',
+  'lighting-color',
+  'background-image',
   'background',
 ];
 
 const SAFE_FALLBACK = '#F5FBFF';
 const SAFE_BLUE_LIGHT = '#64B5F6';
+const SAFE_TEXT = '#1e293b';
 
 function isUnsupportedColor(value: string): boolean {
   return UNSUPPORTED_COLOR_REGEX.test(value);
 }
 
-function sanitizeColorValue(value: string, propName: string): string {
-  if (!value || value === 'transparent' || value === 'inherit' || value === 'initial' || value === 'unset') {
-    return value;
-  }
-
-  // Text colors — use a safe dark that works on light backgrounds
-  if (propName === 'color') {
-    return '#1e293b';
-  }
-
-  // Border colors — use safe blue
-  if (propName.toLowerCase().includes('border')) {
-    return SAFE_BLUE_LIGHT;
-  }
-
-  // Gradients and background-image — use a safe solid fallback
-  if (propName === 'backgroundImage' || propName === 'background') {
-    // If it's a gradient with unsupported colors, replace entirely
-    if (value.includes('gradient')) {
-      return SAFE_FALLBACK;
-    }
-    return SAFE_FALLBACK;
-  }
-
+function getSafeReplacement(propName: string): string {
+  const lower = propName.toLowerCase();
+  if (lower === 'color') return SAFE_TEXT;
+  if (lower.includes('border')) return SAFE_BLUE_LIGHT;
   return SAFE_FALLBACK;
 }
 
 /**
- * Sanitizes all unsupported CSS color functions in a cloned document.
- * This runs on the cloned DOM only — never touches the live page.
+ * Strips unsupported color functions from a CSS value string,
+ * replacing them with safe hex alternatives.
  */
-function sanitizeClonedDocument(clonedDoc: Document, pageNum: number, totalPages: number): void {
-  console.log(`[PDF Export] Rendering page ${pageNum}/${totalPages}...`);
-  console.log(`[PDF Export] Scanning computed styles for unsupported color functions...`);
+function sanitizeCssValue(value: string): string {
+  if (!isUnsupportedColor(value)) return value;
 
+  // Replace lab(...), oklab(...), lch(...), oklch(...) with a safe color
+  // These can appear inside gradients: linear-gradient(... oklab(...) ...)
+  let result = value;
+
+  // Replace full gradient declarations containing unsupported colors
+  if (result.includes('gradient')) {
+    // For gradients, replace the entire gradient with a safe solid color
+    return SAFE_FALLBACK;
+  }
+
+  // For simple values, replace any unsupported function
+  result = result.replace(/\b(lab|oklab|lch|oklch)\s*\([^)]*\)/gi, SAFE_FALLBACK);
+  result = result.replace(/\bcolor\s*\([^)]*\)/gi, SAFE_FALLBACK);
+  result = result.replace(/\bcolor-mix\s*\([^)]*\)/gi, SAFE_FALLBACK);
+
+  return result;
+}
+
+/**
+ * Phase 1: Sanitize all stylesheet rules in the cloned document.
+ * This catches CSS classes, Tailwind utilities, and any other
+ * stylesheet-driven colors that use modern color functions.
+ */
+function sanitizeStylesheets(clonedDoc: Document, pageNum: number): number {
+  let totalFixed = 0;
+
+  const sheets = Array.from(clonedDoc.styleSheets);
+  for (const sheet of sheets) {
+    let rules: CSSRuleList;
+    try {
+      rules = sheet.cssRules || sheet.rules;
+    } catch {
+      // Cross-origin stylesheet — cannot access rules, skip
+      continue;
+    }
+
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      if (rule instanceof CSSStyleRule) {
+        const style = rule.style;
+        for (let j = 0; j < style.length; j++) {
+          const prop = style.item(j);
+          const val = style.getPropertyValue(prop);
+          if (val && isUnsupportedColor(val)) {
+            const safe = sanitizeCssValue(val);
+            console.log(
+              `[PDF Export] Stylesheet rule fix:`,
+              `\n[PDF Export]   selector: ${rule.selectorText}`,
+              `\n[PDF Export]   property: ${prop}`,
+              `\n[PDF Export]   before: ${val.slice(0, 100)}`,
+              `\n[PDF Export]   after: ${safe}`
+            );
+            style.setProperty(prop, safe);
+            totalFixed++;
+          }
+        }
+      }
+    }
+  }
+
+  console.log(`[PDF Export] Page ${pageNum}: sanitized ${totalFixed} stylesheet rule(s)`);
+  return totalFixed;
+}
+
+/**
+ * Phase 2: Sanitize computed + inline styles on every element.
+ * This catches inline styles and runtime-resolved colors.
+ */
+function sanitizeElements(clonedDoc: Document, pageNum: number): number {
+  let totalFixed = 0;
   const allElements = clonedDoc.querySelectorAll('*');
-  let replacedCount = 0;
 
   allElements.forEach((el) => {
     const htmlEl = el as HTMLElement;
@@ -103,62 +152,75 @@ function sanitizeClonedDocument(clonedDoc: Document, pageNum: number, totalPages
     const computed = clonedDoc.defaultView?.getComputedStyle(htmlEl);
     if (!computed) return;
 
-    let elementNeedsSanitization = false;
     const elementTag = htmlEl.tagName.toLowerCase();
     const elementClass = htmlEl.className
-      ? String(htmlEl.className).slice(0, 80)
+      ? String(htmlEl.className).slice(0, 60)
       : '';
     const elementSelector = elementClass
       ? `${elementTag}.${elementClass.split(' ')[0]}`
       : elementTag;
 
-    // Check inline styles first
+    // Check computed styles — if unsupported, override with inline !important
     for (const prop of CSS_COLOR_PROPS) {
-      const propName = String(prop);
-      const inlineVal = htmlEl.style.getPropertyValue(propName);
-      if (inlineVal && isUnsupportedColor(inlineVal)) {
-        console.log(
-          `[PDF Export]   Unsupported inline color found:`,
-          `\n[PDF Export]     property: ${propName}`,
-          `\n[PDF Export]     value: ${inlineVal}`,
-          `\n[PDF Export]     element: ${elementSelector}`
-        );
-        const safe = sanitizeColorValue(inlineVal, propName);
-        console.log(`[PDF Export]     replacing with: ${safe}`);
-        htmlEl.style.setProperty(propName, safe);
-        elementNeedsSanitization = true;
-        replacedCount++;
+      try {
+        const computedVal = computed.getPropertyValue(prop);
+        if (computedVal && isUnsupportedColor(computedVal)) {
+          const safe = getSafeReplacement(prop);
+          console.log(
+            `[PDF Export] Element computed color fix:`,
+            `\n[PDF Export]   element: ${elementSelector}`,
+            `\n[PDF Export]   property: ${prop}`,
+            `\n[PDF Export]   before: ${computedVal.slice(0, 100)}`,
+            `\n[PDF Export]   after: ${safe}`
+          );
+          htmlEl.style.setProperty(prop, safe, 'important');
+          totalFixed++;
+        }
+      } catch {
+        // skip unreadable properties
       }
     }
 
-    // Check computed styles and apply overrides
+    // Also check inline styles directly
     for (const prop of CSS_COLOR_PROPS) {
-      const propName = String(prop);
       try {
-        const computedVal = computed.getPropertyValue(propName);
-        if (computedVal && isUnsupportedColor(computedVal)) {
-          if (!elementNeedsSanitization) {
-            console.log(
-              `[PDF Export] Unsupported computed color found:`,
-              `\n[PDF Export]   property: ${propName}`,
-              `\n[PDF Export]   value: ${computedVal}`,
-              `\n[PDF Export]   element: ${elementSelector}`
-            );
-          }
-          const safe = sanitizeColorValue(computedVal, propName);
-          console.log(`[PDF Export]   replacing with: ${safe}`);
-          htmlEl.style.setProperty(propName, safe, 'important');
-          elementNeedsSanitization = true;
-          replacedCount++;
+        const inlineVal = htmlEl.style.getPropertyValue(prop);
+        if (inlineVal && isUnsupportedColor(inlineVal)) {
+          const safe = getSafeReplacement(prop);
+          console.log(
+            `[PDF Export] Element inline color fix:`,
+            `\n[PDF Export]   element: ${elementSelector}`,
+            `\n[PDF Export]   property: ${prop}`,
+            `\n[PDF Export]   before: ${inlineVal.slice(0, 100)}`,
+            `\n[PDF Export]   after: ${safe}`
+          );
+          htmlEl.style.setProperty(prop, safe, 'important');
+          totalFixed++;
         }
       } catch {
-        // Some properties may not be readable — skip silently
+        // skip
       }
     }
   });
 
-  console.log(`[PDF Export] Page ${pageNum}: sanitized ${replacedCount} unsupported color(s)`);
-  console.log(`[PDF Export] Rendering page ${pageNum}...`);
+  console.log(`[PDF Export] Page ${pageNum}: sanitized ${totalFixed} element style(s)`);
+  return totalFixed;
+}
+
+/**
+ * Master sanitizer — runs on the cloned DOM only.
+ * Phase 1: Patch stylesheet rules (catches Tailwind, CSS variables, etc.)
+ * Phase 2: Patch element computed + inline styles
+ */
+function sanitizeClonedDocument(clonedDoc: Document, pageNum: number, totalPages: number): void {
+  console.log(`[PDF Export] Rendering page ${pageNum}/${totalPages}...`);
+  console.log(`[PDF Export] Scanning for unsupported color functions (lab, oklab, lch, oklch, color, color-mix)...`);
+
+  const stylesheetFixes = sanitizeStylesheets(clonedDoc, pageNum);
+  const elementFixes = sanitizeElements(clonedDoc, pageNum);
+
+  const total = stylesheetFixes + elementFixes;
+  console.log(`[PDF Export] Page ${pageNum}: total ${total} fix(es) applied`);
 }
 
 /**
