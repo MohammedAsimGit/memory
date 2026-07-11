@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useApi } from '@/hooks/useApi';
-import { Settings, Stats } from '@/types';
-import { daysBetween } from '@/lib/utils';
+import { Settings, Stats, StoryBook } from '@/types';
+import { daysBetween, formatDate } from '@/lib/utils';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const navItems = [
+  { title: 'Story Books', desc: 'View your love story PDFs', icon: '📚', color: '#1976D2', href: '/story-books' },
   { title: 'Special Days', desc: 'Anniversaries, milestones & countdowns', icon: '❤️', color: '#6366F1', href: '/special-days' },
   { title: 'Daily Journal', desc: 'Read and write shared moments', icon: '📔', color: '#10B981', href: '/journal' },
   { title: 'Letters to Future', desc: 'Unlock heartfelt messages on a future date', icon: '💌', color: '#EC4899', href: '/letters' },
@@ -40,6 +41,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { data: settings, loading: sLoading } = useApi<Settings>('/settings');
   const { data: stats, loading: stLoading } = useApi<Stats>('/stats');
+  const { data: storyBooks } = useApi<StoryBook[]>('/storybooks');
 
   const [daysTogether, setDaysTogether] = useState<number | null>(null);
 
@@ -126,6 +128,55 @@ export default function ProfilePage() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* ── Story Books ── */}
+      {storyBooks && storyBooks.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Story Books
+            </h2>
+            <button
+              onClick={() => router.push('/story-books')}
+              className="text-xs font-semibold text-[#1976D2] hover:text-[#1565C0] transition-colors"
+            >
+              View All
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {storyBooks.slice(0, 3).map((book, i) => (
+              <motion.button
+                key={book._id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.25 + i * 0.05 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => window.open(book.fileUrl, '_blank')}
+                className="w-full bg-white dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 border border-white/50 dark:border-slate-700/50 shadow-md flex items-center gap-4 text-left"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] flex items-center justify-center text-2xl flex-shrink-0 shadow-lg shadow-blue-400/20">
+                  📖
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
+                    {book.title}
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                    {book.year} Edition &middot; {book.pageCount} Pages
+                  </p>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* ── Contributions ── */}
       <motion.div
