@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/useToast';
@@ -45,20 +46,55 @@ function triggerBrowserDownload(url: string, filename: string) {
   document.body.removeChild(a);
 }
 
-async function waitForPdfTemplate(maxWait = 15000): Promise<void> {
+async function waitForPdfTemplate(maxWait = 20000): Promise<void> {
+  console.log('[PDF Export] Waiting for template to mount...');
   const start = Date.now();
+
   while (Date.now() - start < maxWait) {
     const portal = document.getElementById('pdf-render-portal');
     const pages = portal?.querySelectorAll('.story-page');
-    if (pages && pages.length > 0) {
+
+    if (pages && pages.length > 0 && portal) {
+      console.log(`[PDF Export] Template mounted with ${pages.length} pages`);
+
+      // Ensure fonts are loaded (BookTemplate uses Playfair Display)
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+        console.log('[PDF Export] Fonts ready');
+      }
+
+      // Ensure cross-origin images are configured and loaded
+      const images = Array.from(portal.querySelectorAll('img'));
+      images.forEach((img) => {
+        if (!img.crossOrigin) img.crossOrigin = 'anonymous';
+      });
+
+      await Promise.all(
+        images.map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              if (img.complete && img.naturalWidth > 0) {
+                resolve();
+                return;
+              }
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+              setTimeout(resolve, 8000);
+            })
+        )
+      );
+      console.log(`[PDF Export] ${images.length} images processed`);
+
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
       return;
     }
+
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  throw new Error('PDF template failed to render');
+
+  throw new Error('PDF template failed to render. Please try again.');
 }
 
 const CONFETTI_PARTICLES = Array.from({ length: 12 }, (_, idx) => ({
@@ -72,8 +108,8 @@ const CONFETTI_PARTICLES = Array.from({ length: 12 }, (_, idx) => ({
 
 const SUCCESS_COPY = {
   pdf: {
-    title: 'Your Story Book is Ready',
-    description: 'Your printable love story has been safely preserved as a premium PDF.',
+    title: 'Story Book Created Successfully ❤️',
+    description: 'Your love story has been preserved as a printable PDF.',
   },
   zip: {
     title: 'Backup Complete',
@@ -101,6 +137,8 @@ export default function ExportCenterPage() {
   const [showJsonModal, setShowJsonModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Options — separate per export type
   const [pdfIncludeLocked, setPdfIncludeLocked] = useState(false);
@@ -179,23 +217,40 @@ export default function ExportCenterPage() {
   };
 
   const handleStartPdfExport = async () => {
+    console.log('[PDF Export] Starting export...');
     setShowPdfModal(false);
+    setExportError(null);
+    setShowErrorModal(false);
+
     const preparing = getProgressForStep('preparing');
     setProgressPercent(preparing.percent);
     setProgressMessage(preparing.message);
     setShowProgressModal(true);
-    setMountPdfTemplate(true);
+
+    // Force React to commit the offscreen template before we read the DOM
+    flushSync(() => {
+      setMountPdfTemplate(true);
+    });
 
     try {
+      console.log('[PDF Export] Loading memories and building pages...');
       await waitForPdfTemplate();
 
       const { generateLoveStoryBook } = await import('@/services/export/bookGenerator');
+      console.log('[PDF Export] Creating PDF...');
+
       const pdfBlob = await generateLoveStoryBook({
         onProgress: (status, percent) => {
           setProgressMessage(status);
           setProgressPercent(percent);
         },
       });
+
+      if (!pdfBlob || pdfBlob.size === 0) {
+        throw new Error('PDF generation produced an empty file. Please try again.');
+      }
+
+      console.log('[PDF Export] PDF created, size:', pdfBlob.size, 'bytes');
 
       const filename = `OurStory_LoveBook_${new Date().getFullYear()}.pdf`;
       const url = window.URL.createObjectURL(pdfBlob);
@@ -204,17 +259,34 @@ export default function ExportCenterPage() {
         return url;
       });
       setDownloadFilename(filename);
-      triggerBrowserDownload(url, filename);
 
+      // Show success first — auto-download may be blocked after async work
       setShowProgressModal(false);
       setMountPdfTemplate(false);
       setExportType('pdf');
       setShowSuccessModal(true);
-      addToast('PDF Story Book downloaded!', 'success');
-    } catch {
+
+      console.log('[PDF Export] Preparing download...');
+      try {
+        triggerBrowserDownload(url, filename);
+        console.log('[PDF Export] Download triggered');
+        addToast('PDF Story Book downloaded!', 'success');
+      } catch (downloadErr) {
+        console.warn('[PDF Export] Auto-download blocked:', downloadErr);
+        addToast('Tap Download below to save your Story Book', 'info');
+      }
+
+      console.log('[PDF Export] Export completed');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error during PDF generation';
+      console.error('[PDF Export] Failed:', error);
+
       setShowProgressModal(false);
       setMountPdfTemplate(false);
-      addToast('Failed to generate PDF book', 'error');
+      setExportError(message);
+      setShowErrorModal(true);
+      addToast(`Unable to generate Story Book: ${message}`, 'error');
     }
   };
 
@@ -542,11 +614,21 @@ export default function ExportCenterPage() {
         </motion.div>
       </div>
 
-      {/* ==================== PORTAL: OFFSCREEN PDF RENDER TARGET ==================== */}
+      {/* Offscreen portal — opacity MUST stay 1 or html2canvas captures blank pages */}
       {mountPdfTemplate && data && (
         <div
           id="pdf-render-portal"
-          className="absolute left-[-9999px] top-[-9999px] pointer-events-none opacity-0"
+          aria-hidden="true"
+          className="pointer-events-none"
+          style={{
+            position: 'fixed',
+            left: '-9999px',
+            top: 0,
+            opacity: 1,
+            visibility: 'visible',
+            zIndex: -9999,
+            width: '794px',
+          }}
         >
           <BookTemplate data={data} includeLocked={pdfIncludeLocked} />
         </div>
@@ -814,6 +896,9 @@ export default function ExportCenterPage() {
             <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mt-2">
               {exportType ? SUCCESS_COPY[exportType].title : 'Your export is ready'}
             </p>
+            {downloadFilename && (
+              <p className="text-xs font-mono text-[#1976D2] dark:text-sky-400 mt-1">{downloadFilename}</p>
+            )}
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
               {exportType
                 ? SUCCESS_COPY[exportType].description
@@ -822,6 +907,23 @@ export default function ExportCenterPage() {
           </div>
 
           <div className="flex flex-col gap-2 pt-2">
+            <Button
+              onClick={() => {
+                if (downloadUrl && downloadFilename) {
+                  triggerBrowserDownload(downloadUrl, downloadFilename);
+                  addToast('Download started', 'success');
+                }
+              }}
+              variant="primary"
+              className="w-full text-sm py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Download
+            </Button>
             <Button
               onClick={handleDownloadAgain}
               variant="secondary"
@@ -851,6 +953,47 @@ export default function ExportCenterPage() {
               className="w-full text-sm py-3 rounded-xl"
             >
               Done
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ==================== MODAL: EXPORT ERROR ==================== */}
+      <Modal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+      >
+        <div className="space-y-5 text-center py-2">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-3xl mx-auto">
+            😔
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">
+              Unable to Generate Your Story Book
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Something went wrong while creating your PDF.
+            </p>
+            {exportError && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30 text-left">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-1">Reason</p>
+                <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">{exportError}</p>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button onClick={() => setShowErrorModal(false)} variant="ghost" className="flex-1">
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setShowErrorModal(false);
+                setShowPdfModal(true);
+              }}
+              variant="primary"
+              className="flex-1"
+            >
+              Try Again
             </Button>
           </div>
         </div>
