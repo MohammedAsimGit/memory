@@ -39,6 +39,18 @@ export async function uploadVideo(file: File): Promise<string> {
   return result.secure_url;
 }
 
+export async function uploadPdf(buffer: Buffer, filename: string): Promise<string> {
+  const base64 = `data:application/pdf;base64,${buffer.toString('base64')}`;
+
+  const result = await cloudinary.uploader.upload(base64, {
+    folder: 'our-story/books',
+    resource_type: 'raw',
+    public_id: filename,
+  });
+
+  return result.secure_url;
+}
+
 export async function deleteFile(publicId: string): Promise<void> {
   await cloudinary.uploader.destroy(publicId);
 }

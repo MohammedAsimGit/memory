@@ -233,3 +233,33 @@ const SettingsSchema = new Schema<ISettings>(
 
 export const AppSettings: Model<ISettings> =
   mongoose.models.AppSettings || mongoose.model<ISettings>('AppSettings', SettingsSchema);
+
+export interface IStoryBook extends Document {
+  title: string;
+  year: number;
+  fileUrl: string;
+  fileSize: number;
+  pageCount: number;
+  generatedBy: string;
+  coverImage?: string;
+  version: number;
+}
+
+const StoryBookSchema = new Schema<IStoryBook>(
+  {
+    title: { type: String, required: true },
+    year: { type: Number, required: true },
+    fileUrl: { type: String, required: true },
+    fileSize: { type: Number, required: true },
+    pageCount: { type: Number, required: true },
+    generatedBy: { type: String, required: true },
+    coverImage: { type: String },
+    version: { type: Number, default: 1 },
+  },
+  { timestamps: true }
+);
+
+StoryBookSchema.index({ year: 1, createdAt: -1 });
+
+export const StoryBook: Model<IStoryBook> =
+  mongoose.models.StoryBook || mongoose.model<IStoryBook>('StoryBook', StoryBookSchema);

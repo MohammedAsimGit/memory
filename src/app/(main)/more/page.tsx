@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 const menuItems = [
+  { title: 'Story Books', desc: 'Our love story books', icon: '📚', color: '#1976D2', href: '/story-books' },
   { title: 'Special Days', desc: 'Countdowns & milestones', icon: '📅', color: '#6366F1', href: '/special-days' },
   { title: 'Journal', desc: 'Daily thoughts', icon: '📔', color: '#10B981', href: '/journal' },
   { title: 'Letters', desc: 'Messages for the future', icon: '💌', color: '#EC4899', href: '/letters' },

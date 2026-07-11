@@ -136,3 +136,17 @@ export interface Stats {
   myCapsules: number;
   herCapsules: number;
 }
+
+export interface StoryBook {
+  _id: string;
+  title: string;
+  year: number;
+  fileUrl: string;
+  fileSize: number;
+  pageCount: number;
+  generatedBy: string;
+  coverImage?: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}

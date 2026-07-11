@@ -251,8 +251,35 @@ export default function ExportCenterPage() {
       }
 
       console.log('[PDF Export] PDF created, size:', pdfBlob.size, 'bytes');
+      setProgressMessage('Uploading to cloud storage...');
+      setProgressPercent(75);
 
-      const filename = `OurStory_LoveBook_${new Date().getFullYear()}.pdf`;
+      // Calculate page count
+      const portal = document.getElementById('pdf-render-portal');
+      const pageCount = portal ? portal.querySelectorAll('.story-page').length : 0;
+
+      // Upload PDF and save story book
+      const formData = new FormData();
+      formData.append('pdf', new File([pdfBlob], 'story-book.pdf', { type: 'application/pdf' }));
+      formData.append('title', 'Our Love Story');
+      formData.append('year', String(new Date().getFullYear()));
+      formData.append('pageCount', String(pageCount));
+      formData.append('generatedBy', 'User');
+
+      const saveResponse = await fetch('/api/story-books/save', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save story book');
+      }
+
+      const savedStoryBook = await saveResponse.json();
+      console.log('[PDF Export] Story book saved:', savedStoryBook);
+      setProgressPercent(90);
+
+      const filename = `OurLoveStory_${new Date().getFullYear()}.pdf`;
       const url = window.URL.createObjectURL(pdfBlob);
       setDownloadUrl((prev) => {
         if (prev) window.URL.revokeObjectURL(prev);
@@ -925,24 +952,15 @@ export default function ExportCenterPage() {
               Download
             </Button>
             <Button
-              onClick={handleDownloadAgain}
+              onClick={() => router.push('/story-books')}
               variant="secondary"
               className="w-full text-sm py-3 rounded-xl border-slate-200 flex items-center justify-center gap-2"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
               </svg>
-              Open Folder
-            </Button>
-            <Button onClick={handleShareFile} variant="primary" className="w-full text-sm py-3 rounded-xl flex items-center justify-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="18" cy="5" r="3" />
-                <circle cx="6" cy="12" r="3" />
-                <circle cx="18" cy="19" r="3" />
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-              </svg>
-              Share
+              Open Story Books
             </Button>
             <Button
               onClick={() => {
