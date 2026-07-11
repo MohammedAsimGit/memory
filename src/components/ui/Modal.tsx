@@ -9,9 +9,14 @@ interface ModalProps {
   children: React.ReactNode;
   title?: string;
   className?: string;
+  preventClose?: boolean;
 }
 
-export default function Modal({ isOpen, onClose, children, title, className }: ModalProps) {
+export default function Modal({ isOpen, onClose, children, title, className, preventClose = false }: ModalProps) {
+  const handleBackdropClick = () => {
+    if (!preventClose) onClose();
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -21,7 +26,7 @@ export default function Modal({ isOpen, onClose, children, title, className }: M
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
+            onClick={handleBackdropClick}
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -35,9 +40,11 @@ export default function Modal({ isOpen, onClose, children, title, className }: M
             {title && (
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h3>
-                <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                  ✕
-                </button>
+                {!preventClose && (
+                  <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                    ✕
+                  </button>
+                )}
               </div>
             )}
             {children}

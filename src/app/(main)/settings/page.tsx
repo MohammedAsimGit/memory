@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import GlassCard from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -28,6 +29,7 @@ const item = {
 };
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { data: settings, loading, refetch } = useApi<Settings>('/settings');
   const { addToast, ToastContainer } = useToast();
   const darkMode = useAppStore((s) => s.darkMode);
@@ -49,7 +51,6 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [saving, setSaving] = useState(false);
-  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -122,31 +123,6 @@ export default function SettingsPage() {
       addToast('Failed to change password', 'error');
     }
     setSaving(false);
-  };
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      const res = await fetch('/api/settings/export', {
-        headers: {
-          Authorization: `Bearer ${JSON.parse(localStorage.getItem('our-story-auth') || '{}')?.state?.token || ''}`,
-        },
-      });
-      if (!res.ok) throw new Error('Export failed');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'our-story-export.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      addToast('Data exported!', 'success');
-    } catch {
-      addToast('Export failed', 'error');
-    }
-    setExporting(false);
   };
 
   if (loading) {
@@ -377,25 +353,24 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-slate-800 dark:text-slate-100">Export Data</p>
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">Export &amp; Backup</p>
                   <p className="text-xs text-slate-400 dark:text-slate-400 mt-0.5">
-                    Download all your memories and data as JSON
+                    PDF Story Book, password-encrypted ZIP archives, or JSON data exports
                   </p>
                 </div>
                 <Button
-                  onClick={handleExport}
-                  loading={exporting}
+                  onClick={() => router.push('/settings/export')}
                   variant="secondary"
                   size="sm"
                 >
-                  Export
+                  Open Export Center ❤️
                 </Button>
               </div>
               <div className="border-t border-slate-100" />
               <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-100 mb-1">Backup &amp; Restore</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-100 mb-1">Backup Information</p>
                 <p className="text-xs text-slate-400 dark:text-slate-400">
-                  Backup and restore functionality coming soon. Your data is stored safely on your server.
+                  Create encrypted ZIP backups or JSON exports from the Export Center. Keep your backup password safe — you&apos;ll need it to decrypt protected content.
                 </p>
               </div>
             </div>
