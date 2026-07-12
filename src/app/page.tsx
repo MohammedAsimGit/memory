@@ -18,8 +18,7 @@ type Screen =
   | 'untrusted-device'
   | 'invitation-code'
   | 'recovery-code'
-  | 'profile'
-  | 'done';
+  | 'profile';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -39,10 +38,10 @@ export default function UnlockPage() {
   const [authToken, setAuthToken] = useState('');
   const [deviceToken, setDeviceToken] = useState('');
   const [deviceId, setDeviceId] = useState('');
-  const [deviceName, setDeviceName] = useState('');
   const [invitationCode, setInvitationCode] = useState('');
   const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
-  const [pendingOwner, setPendingOwner] = useState<'me' | 'her' | null>(null);
+  const [deviceIsTrusted, setDeviceIsTrusted] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
 
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -59,6 +58,9 @@ export default function UnlockPage() {
     return () => clearTimeout(splashTimer);
   }, []);
 
+  // ──────────────────────────────────────────────
+  // STAGE 1: Password Authentication
+  // ──────────────────────────────────────────────
   const handleUnlock = async () => {
     if (!password.trim()) return;
     setLoading(true);
@@ -77,13 +79,7 @@ export default function UnlockPage() {
         setAuthToken(data.token);
         const token = getDeviceToken();
         setDeviceToken(token);
-
-        if (rememberProfile && activeProfile) {
-          setPendingOwner(activeProfile);
-          setScreen('device-check');
-        } else {
-          setScreen('device-check');
-        }
+        setScreen('device-check');
       } else if (res.status === 401) {
         setError('Incorrect Password');
       } else {
@@ -96,6 +92,9 @@ export default function UnlockPage() {
     }
   };
 
+  // ──────────────────────────────────────────────
+  // STAGE 2: Trusted Device Verification
+  // ──────────────────────────────────────────────
   const checkDeviceTrust = async () => {
     setLoading(true);
     try {
@@ -111,16 +110,10 @@ export default function UnlockPage() {
       const data = await res.json();
 
       if (data.isTrusted) {
+        setDeviceIsTrusted(true);
         setDeviceId(data.device._id);
         setDeviceTokenStore(deviceToken, data.device._id, data.device.deviceName);
-
-        if (pendingOwner) {
-          setAuth(authToken);
-          useAuthStore.getState().setActiveProfile(pendingOwner);
-          router.push('/home');
-        } else {
-          setScreen('profile');
-        }
+        goToProfileOrHome();
       } else {
         const deviceCountRes = await fetch('/api/auth/devices', {
           headers: { Authorization: `Bearer ${authToken}` },
@@ -144,15 +137,42 @@ export default function UnlockPage() {
     if (screen === 'device-check' && authToken && deviceToken) {
       checkDeviceTrust();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, authToken, deviceToken]);
 
-  const handleProfileSelected = async (profile: 'me' | 'her') => {
-    setPendingOwner(profile);
+  // ──────────────────────────────────────────────
+  // STAGE 3: Profile Selection → Home
+  // ──────────────────────────────────────────────
+  const goToProfileOrHome = () => {
+    if (rememberProfile && activeProfile) {
+      setAuth(authToken);
+      useAuthStore.getState().setActiveProfile(activeProfile);
+      router.push('/home');
+    } else {
+      setScreen('profile');
+    }
+  };
+
+  const handleProfileSelected = (profile: 'me' | 'her') => {
+    setAuth(authToken);
+    useAuthStore.getState().setActiveProfile(profile);
+    router.push('/home');
+  };
+
+  // ──────────────────────────────────────────────
+  // Device Registration (first device)
+  // ──────────────────────────────────────────────
+  const [registerOwner, setRegisterOwner] = useState<'me' | 'her' | null>(null);
+  const [registerDeviceName, setRegisterDeviceName] = useState('');
+
+  const handleRegisterDevice = async () => {
+    if (!registerOwner) return;
     setLoading(true);
     setError('');
 
     try {
       const info = formatDeviceInfo();
+      const name = registerDeviceName.trim() || generateDeviceName();
       const res = await fetch('/api/auth/device/register', {
         method: 'POST',
         headers: {
@@ -160,10 +180,10 @@ export default function UnlockPage() {
           Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          deviceName: generateDeviceName(),
+          deviceName: name,
           platform: info.platform,
           browser: info.browser,
-          owner: profile === 'me' ? name1 : name2,
+          owner: registerOwner === 'me' ? name1 : name2,
         }),
       });
 
@@ -173,10 +193,11 @@ export default function UnlockPage() {
         const serverToken = data.deviceToken as string;
         localStorage.setItem('our-story-device-token', serverToken);
         setDeviceToken(serverToken);
-        setDeviceTokenStore(serverToken, data.deviceId, generateDeviceName());
+        setDeviceTokenStore(serverToken, data.deviceId, name);
         setDeviceId(data.deviceId);
+        setDeviceIsTrusted(true);
         setAuth(authToken);
-        useAuthStore.getState().setActiveProfile(profile);
+        useAuthStore.getState().setActiveProfile(registerOwner);
         router.push('/home');
       } else {
         setError(data.error || 'Failed to register device');
@@ -188,6 +209,9 @@ export default function UnlockPage() {
     }
   };
 
+  // ──────────────────────────────────────────────
+  // Invitation Code Verification
+  // ──────────────────────────────────────────────
   const handleVerifyInvitation = async () => {
     if (!invitationCode.trim()) return;
     setLoading(true);
@@ -217,8 +241,9 @@ export default function UnlockPage() {
         setDeviceToken(serverToken);
         setDeviceTokenStore(serverToken, data.deviceId, generateDeviceName());
         setDeviceId(data.deviceId);
+        setDeviceIsTrusted(true);
         setAuth(authToken);
-        setScreen('profile');
+        goToProfileOrHome();
       } else {
         const reason = data.reason || 'unknown';
         let msg = data.error || 'Invalid invitation code';
@@ -236,6 +261,9 @@ export default function UnlockPage() {
     }
   };
 
+  // ──────────────────────────────────────────────
+  // Recovery Code
+  // ──────────────────────────────────────────────
   const handleRecoveryCode = async () => {
     if (!recoveryCodeInput.trim()) return;
     setLoading(true);
@@ -264,8 +292,10 @@ export default function UnlockPage() {
         localStorage.setItem('our-story-device-token', serverToken);
         setDeviceToken(serverToken);
         setDeviceTokenStore(serverToken, data.deviceId, generateDeviceName());
+        setDeviceId(data.deviceId);
+        setDeviceIsTrusted(true);
         setAuth(authToken);
-        setScreen('profile');
+        goToProfileOrHome();
       } else {
         setError(data.error || 'Invalid recovery code');
       }
@@ -299,8 +329,31 @@ export default function UnlockPage() {
       if (screen === 'lock') handleUnlock();
       else if (screen === 'invitation-code') handleVerifyInvitation();
       else if (screen === 'recovery-code') handleRecoveryCode();
+      else if (screen === 'register-device') handleRegisterDevice();
     }
   };
+
+  // ──────────────────────────────────────────────
+  // DEBUG PANEL (dev only)
+  // ──────────────────────────────────────────────
+  const isDev = process.env.NODE_ENV === 'development';
+
+  const debugInfo = {
+    vaultId: 'main',
+    authToken: authToken ? `${authToken.substring(0, 20)}...` : 'None',
+    deviceToken: deviceToken ? `${deviceToken.substring(0, 16)}...` : 'None',
+    deviceId: deviceId || 'None',
+    deviceIsTrusted,
+    screen,
+    activeProfile: activeProfile || 'None',
+    rememberProfile,
+    platform: typeof navigator !== 'undefined' ? formatDeviceInfo().platform : 'N/A',
+    browser: typeof navigator !== 'undefined' ? formatDeviceInfo().browser : 'N/A',
+  };
+
+  // ──────────────────────────────────────────────
+  // SCREENS
+  // ──────────────────────────────────────────────
 
   if (screen === 'splash') {
     return (
@@ -327,6 +380,7 @@ export default function UnlockPage() {
     );
   }
 
+  // ── STAGE 1: Password ──
   if (screen === 'lock') {
     return (
       <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
@@ -396,6 +450,7 @@ export default function UnlockPage() {
     );
   }
 
+  // ── STAGE 2: Device Check (loading) ──
   if (screen === 'device-check') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center">
@@ -417,6 +472,7 @@ export default function UnlockPage() {
     );
   }
 
+  // ── STAGE 2: Register First Device ──
   if (screen === 'register-device') {
     return (
       <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
@@ -465,6 +521,53 @@ export default function UnlockPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="border-t border-slate-200/50 dark:border-slate-700/50" />
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1.5 ml-1">
+                  Device Name
+                </label>
+                <input
+                  type="text"
+                  value={registerDeviceName}
+                  onChange={(e) => setRegisterDeviceName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={generateDeviceName()}
+                  autoFocus
+                  className="w-full bg-white/80 dark:bg-slate-700/80 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-2xl px-4 py-3 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 focus:border-[#2196F3]/50 transition-all"
+                />
+              </div>
+
+              <div className="border-t border-slate-200/50 dark:border-slate-700/50" />
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1.5 ml-1">
+                  Who is using this device?
+                </label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <button
+                    onClick={() => setRegisterOwner('me')}
+                    className={`p-3 rounded-2xl border-2 transition-all font-semibold text-sm ${
+                      registerOwner === 'me'
+                        ? 'border-sky-400 bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    {name1}
+                  </button>
+                  <button
+                    onClick={() => setRegisterOwner('her')}
+                    className={`p-3 rounded-2xl border-2 transition-all font-semibold text-sm ${
+                      registerOwner === 'her'
+                        ? 'border-purple-400 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    {name2}
+                  </button>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -483,33 +586,22 @@ export default function UnlockPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-3 font-medium">
-              Who is using this device?
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                onClick={() => handleProfileSelected('me')}
-                size="lg"
-                className="rounded-2xl"
-                loading={loading}
-              >
-                {name1}
-              </Button>
-              <Button
-                onClick={() => handleProfileSelected('her')}
-                size="lg"
-                className="rounded-2xl"
-                loading={loading}
-              >
-                {name2}
-              </Button>
-            </div>
+            <Button
+              onClick={handleRegisterDevice}
+              size="lg"
+              className="w-full text-lg rounded-2xl"
+              loading={loading}
+              disabled={!registerOwner}
+            >
+              Register Device 🛡️
+            </Button>
           </motion.div>
         </div>
       </div>
     );
   }
 
+  // ── STAGE 2: Invitation Code (untrusted device) ──
   if (screen === 'untrusted-device') {
     return (
       <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
@@ -622,11 +714,37 @@ export default function UnlockPage() {
               Back
             </Button>
           </motion.div>
+
+          {isDev && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-6"
+            >
+              <button
+                onClick={() => setShowDebug(!showDebug)}
+                className="w-full text-center text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors py-2"
+              >
+                {showDebug ? 'Hide Debug' : 'Show Debug'}
+              </button>
+              {showDebug && (
+                <div className="bg-slate-900/80 dark:bg-slate-950/80 backdrop-blur-md rounded-2xl p-4 mt-2 text-xs font-mono text-green-400 space-y-1 border border-slate-700/50">
+                  {Object.entries(debugInfo).map(([key, val]) => (
+                    <div key={key}>
+                      <span className="text-slate-500">{key}:</span> {String(val)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
         </div>
       </div>
     );
   }
 
+  // ── STAGE 2: Recovery Code ──
   if (screen === 'recovery-code') {
     return (
       <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
@@ -727,6 +845,7 @@ export default function UnlockPage() {
     );
   }
 
+  // ── STAGE 3: Profile Selection ──
   if (screen === 'profile') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex flex-col items-center justify-center px-6">
