@@ -1,3 +1,26 @@
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // fall through to manual generation
+    }
+  }
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export function getDeviceInfo() {
   const ua = navigator.userAgent;
 
@@ -17,13 +40,14 @@ export function getDeviceInfo() {
   return { platform, browser };
 }
 
-export function getDeviceToken(): string | null {
-  if (typeof window === 'undefined') return null;
+export function getDeviceToken(): string {
+  if (typeof window === 'undefined') return generateUUID();
+
   let token = localStorage.getItem('our-story-device-token');
-  if (!token) {
-    token = crypto.randomUUID();
-    localStorage.setItem('our-story-device-token', token);
-  }
+  if (token) return token;
+
+  token = generateUUID();
+  localStorage.setItem('our-story-device-token', token);
   return token;
 }
 

@@ -82,7 +82,7 @@ export default function UnlockPage() {
 
         if (rememberProfile && activeProfile) {
           setSelectedUserId(activeProfile === 'me' ? 'me' : 'her');
-          setDeviceToken(getDeviceToken() || '');
+          setDeviceToken(getDeviceToken());
           setScreen('device-check');
         } else {
           setScreen('profile');
@@ -101,8 +101,7 @@ export default function UnlockPage() {
 
   const handleProfileSelected = async (profile: 'me' | 'her') => {
     setSelectedUserId(profile);
-    const dt = getDeviceToken() || '';
-    setDeviceToken(dt);
+    setDeviceToken(getDeviceToken());
     setScreen('device-check');
   };
 
@@ -175,7 +174,10 @@ export default function UnlockPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setDeviceTokenStore(deviceToken, data.deviceId, deviceName.trim());
+        const serverToken = data.deviceToken as string;
+        localStorage.setItem('our-story-device-token', serverToken);
+        setDeviceToken(serverToken);
+        setDeviceTokenStore(serverToken, data.deviceId, deviceName.trim());
         setDeviceId(data.deviceId);
         setAuth(authToken);
         useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
@@ -251,7 +253,10 @@ export default function UnlockPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setDeviceTokenStore(deviceToken, data.deviceId, generateDeviceName());
+        const serverToken = data.deviceToken as string;
+        localStorage.setItem('our-story-device-token', serverToken);
+        setDeviceToken(serverToken);
+        setDeviceTokenStore(serverToken, data.deviceId, generateDeviceName());
         setAuth(authToken);
         useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
         router.push('/home');
@@ -290,7 +295,10 @@ export default function UnlockPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setDeviceTokenStore(deviceToken, data.deviceId, generateDeviceName());
+        const serverToken = data.deviceToken as string;
+        localStorage.setItem('our-story-device-token', serverToken);
+        setDeviceToken(serverToken);
+        setDeviceTokenStore(serverToken, data.deviceId, generateDeviceName());
         setAuth(authToken);
         useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
         router.push('/home');
