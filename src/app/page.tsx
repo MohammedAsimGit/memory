@@ -47,6 +47,7 @@ export default function UnlockPage() {
   const [approvalCode, setApprovalCode] = useState('');
   const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [requestRejected, setRequestRejected] = useState(false);
 
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -150,6 +151,47 @@ export default function UnlockPage() {
     }
   }, [screen, authToken, selectedUserId, deviceToken]);
 
+  useEffect(() => {
+    if (screen !== 'approval-request' || !approvalRequestId || !authToken) return;
+
+    let cancelled = false;
+
+    const pollStatus = async () => {
+      try {
+        const res = await fetch(`/api/auth/device/request-status?requestId=${approvalRequestId}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+
+        if (!res.ok || cancelled) return;
+
+        const data = await res.json();
+
+        if (data.status === 'approved' && data.deviceToken) {
+          console.log(`[ApprovalPoll] Request ${approvalRequestId} approved, saving token and redirecting`);
+          localStorage.setItem('our-story-device-token', data.deviceToken);
+          setDeviceToken(data.deviceToken);
+          setDeviceTokenStore(data.deviceToken, '', generateDeviceName());
+          setAuth(authToken);
+          useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
+          router.push('/home');
+        } else if (data.status === 'rejected') {
+          console.log(`[ApprovalPoll] Request ${approvalRequestId} rejected`);
+          setRequestRejected(true);
+        }
+      } catch {
+        // silently retry on next poll
+      }
+    };
+
+    pollStatus();
+    const interval = setInterval(pollStatus, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [screen, approvalRequestId, authToken, selectedUserId]);
+
   const handleRegisterDevice = async () => {
     if (!deviceName.trim()) return;
     setLoading(true);
@@ -207,6 +249,7 @@ export default function UnlockPage() {
         body: JSON.stringify({
           userId: selectedUserId,
           deviceName: generateDeviceName(),
+          requestDeviceId: deviceToken,
           platform: info.platform,
           browser: info.browser,
         }),
@@ -215,6 +258,7 @@ export default function UnlockPage() {
       const data = await res.json();
 
       if (res.ok) {
+        console.log(`[RequestAccess] Request created: ${data.requestId}`);
         setApprovalRequestId(data.requestId);
         setScreen('approval-request');
       } else {
@@ -669,34 +713,36 @@ export default function UnlockPage() {
               transition={{ type: 'spring', stiffness: 200, damping: 15 }}
               className="w-20 h-20 bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] rounded-[1.5rem] mx-auto flex items-center justify-center text-4xl shadow-2xl shadow-blue-400/30 mb-5"
             >
-              📨
+              {requestRejected ? '❌' : '📨'}
             </motion.div>
             <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
-              Request Sent
+              {requestRejected ? 'Access Request Rejected' : 'Request Sent'}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-300 leading-relaxed">
-              Waiting for approval
-              <br />
-              from an existing trusted device.
+              {requestRejected
+                ? 'Your access request was denied by a trusted device.'
+                : 'Waiting for approval from an existing trusted device.'}
             </p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-6 shadow-lg mb-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse" />
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Waiting for Response
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Open another trusted device to approve this request. The approval code will be valid for 5 minutes.
-            </p>
-          </motion.div>
+          {!requestRejected && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-6 shadow-lg mb-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse" />
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Checking for approval...
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                This device will automatically be approved when a trusted device grants access.
+              </p>
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -704,27 +750,37 @@ export default function UnlockPage() {
             transition={{ delay: 0.3 }}
             className="space-y-3"
           >
-            <Button
-              onClick={() => setScreen('approval-code')}
-              size="lg"
-              className="w-full text-lg rounded-2xl"
-            >
-              Enter Approval Code
-            </Button>
-
-            <Button
-              onClick={() => {
-                setScreen('lock');
-                setPassword('');
-                setError('');
-                setAuthToken('');
-                setSelectedUserId('');
-              }}
-              variant="ghost"
-              className="w-full rounded-2xl"
-            >
-              Cancel
-            </Button>
+            {requestRejected ? (
+              <Button
+                onClick={() => {
+                  setScreen('lock');
+                  setPassword('');
+                  setError('');
+                  setAuthToken('');
+                  setSelectedUserId('');
+                  setRequestRejected(false);
+                }}
+                size="lg"
+                className="w-full text-lg rounded-2xl"
+              >
+                Back to Login
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  setScreen('lock');
+                  setPassword('');
+                  setError('');
+                  setAuthToken('');
+                  setSelectedUserId('');
+                  setRequestRejected(false);
+                }}
+                variant="ghost"
+                className="w-full rounded-2xl"
+              >
+                Cancel
+              </Button>
+            )}
           </motion.div>
         </div>
       </div>

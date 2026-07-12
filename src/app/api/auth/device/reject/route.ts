@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
       resolvedAt: new Date(),
     });
 
+    console.log(`[DeviceReject] Request ${requestId} rejected for device "${deviceRequest.deviceName}" user=${deviceRequest.userId}`);
+
     await SecurityLog.create({
       userId: deviceRequest.userId,
       event: 'device_rejected',
@@ -55,6 +57,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Request rejected' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
+    console.error('[DeviceReject] Error rejecting request:', error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

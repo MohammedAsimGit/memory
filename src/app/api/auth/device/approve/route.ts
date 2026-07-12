@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, isConnected } from '@/lib/db';
-import { DeviceRequest, SecurityLog } from '@/models';
-import { verifyToken, generateApprovalCode, hashApprovalCode } from '@/lib/auth';
+import { DeviceRequest, TrustedDevice, SecurityLog } from '@/models';
+import { verifyToken, generateDeviceToken, hashDeviceToken } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,29 +40,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Request already processed' }, { status: 400 });
     }
 
-    const approvalCode = generateApprovalCode();
-    const approvalCodeHash = hashApprovalCode(approvalCode);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const deviceCount = await TrustedDevice.countDocuments({ userId: deviceRequest.userId, isTrusted: true });
+    if (deviceCount >= 4) {
+      return NextResponse.json({ error: 'Maximum trusted devices reached' }, { status: 400 });
+    }
+
+    const newDeviceToken = generateDeviceToken();
+    const deviceTokenHash = hashDeviceToken(newDeviceToken);
+
+    await TrustedDevice.create({
+      userId: deviceRequest.userId,
+      deviceName: deviceRequest.deviceName,
+      deviceTokenHash,
+      platform: deviceRequest.platform || 'Unknown',
+      browser: deviceRequest.browser || 'Unknown',
+      isTrusted: true,
+      lastActive: new Date(),
+      registeredAt: new Date(),
+    });
 
     await DeviceRequest.findByIdAndUpdate(requestId, {
-      approvalCodeHash,
-      approvalCodeExpires: expiresAt,
+      status: 'approved',
+      deviceToken: newDeviceToken,
+      resolvedAt: new Date(),
     });
+
+    console.log(`[DeviceApprove] Request ${requestId} approved for device "${deviceRequest.deviceName}" user=${deviceRequest.userId}`);
 
     await SecurityLog.create({
       userId: deviceRequest.userId,
-      event: 'approval_code_generated',
-      description: `Approval code generated for "${deviceRequest.deviceName}"`,
+      event: 'device_approved',
+      description: `Device "${deviceRequest.deviceName}" approved and registered`,
       deviceName: deviceRequest.deviceName,
     });
 
     return NextResponse.json({
-      approvalCode,
-      expiresAt,
-      message: 'Approval code generated',
+      message: 'Device approved',
+      status: 'approved',
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
+    console.error('[DeviceApprove] Error approving request:', error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

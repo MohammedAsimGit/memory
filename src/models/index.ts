@@ -298,11 +298,13 @@ export const TrustedDevice: Model<ITrustedDevice> =
 export interface IDeviceRequest extends Document {
   userId: string;
   deviceName: string;
+  requestDeviceId?: string;
   platform: string;
   browser: string;
   status: 'pending' | 'approved' | 'rejected';
   approvalCodeHash?: string;
   approvalCodeExpires?: Date;
+  deviceToken?: string;
   requestedAt: Date;
   resolvedAt?: Date;
 }
@@ -311,11 +313,13 @@ const DeviceRequestSchema = new Schema<IDeviceRequest>(
   {
     userId: { type: String, required: true },
     deviceName: { type: String, required: true },
+    requestDeviceId: { type: String },
     platform: { type: String, default: 'Unknown' },
     browser: { type: String, default: 'Unknown' },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     approvalCodeHash: { type: String },
     approvalCodeExpires: { type: Date },
+    deviceToken: { type: String },
     requestedAt: { type: Date, default: Date.now },
     resolvedAt: { type: Date },
   },

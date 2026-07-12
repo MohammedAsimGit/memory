@@ -25,20 +25,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { userId, deviceName, platform, browser } = await request.json();
+    const { userId, deviceName, requestDeviceId, platform, browser } = await request.json();
 
     if (!userId || !deviceName) {
       return NextResponse.json({ error: 'User ID and device name required' }, { status: 400 });
     }
 
-    const pendingRequest = await DeviceRequest.findOne({
+    const existingPending = await DeviceRequest.findOne({
       userId,
       status: 'pending',
     });
 
-    if (pendingRequest) {
+    if (existingPending) {
+      console.log(`[DeviceRequest] Reusing existing pending request ${existingPending._id} for user ${userId}`);
       return NextResponse.json({
-        requestId: pendingRequest._id,
+        requestId: existingPending._id,
         message: 'Request already pending',
       });
     }
@@ -46,11 +47,14 @@ export async function POST(request: NextRequest) {
     const deviceRequest = await DeviceRequest.create({
       userId,
       deviceName,
+      requestDeviceId: requestDeviceId || undefined,
       platform: platform || 'Unknown',
       browser: browser || 'Unknown',
       status: 'pending',
       requestedAt: new Date(),
     });
+
+    console.log(`[DeviceRequest] Created request ${deviceRequest._id} for device "${deviceName}" (${platform}/${browser}) user=${userId}`);
 
     await SecurityLog.create({
       userId,
@@ -65,6 +69,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
+    console.error('[DeviceRequest] Error creating request:', error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

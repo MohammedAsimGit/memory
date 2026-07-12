@@ -169,11 +169,13 @@ export interface DeviceRequest {
   _id: string;
   userId: string;
   deviceName: string;
+  requestDeviceId?: string;
   platform: string;
   browser: string;
   status: 'pending' | 'approved' | 'rejected';
   approvalCodeHash?: string;
   approvalCodeExpires?: string;
+  deviceToken?: string;
   requestedAt: string;
   resolvedAt?: string;
   createdAt: string;

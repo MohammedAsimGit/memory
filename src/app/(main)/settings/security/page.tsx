@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import GlassCard from '@/components/ui/Card';
@@ -74,7 +74,6 @@ export default function SecurityPage() {
   const [removeDeviceName, setRemoveDeviceName] = useState('');
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<DeviceRequest | null>(null);
-  const [approvalCode, setApprovalCode] = useState('');
   const [processing, setProcessing] = useState(false);
 
   const userId = activeProfile || 'me';
@@ -127,6 +126,23 @@ export default function SecurityPage() {
   useEffect(() => {
     loadData();
   }, [userId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchPendingRequests();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [userId]);
+
+  const prevRequestCountRef = useRef(pendingRequests.length);
+
+  useEffect(() => {
+    if (pendingRequests.length > prevRequestCountRef.current) {
+      addToast('New device access request received!', 'info');
+    }
+    prevRequestCountRef.current = pendingRequests.length;
+  }, [pendingRequests.length]);
 
   const handleRenameDevice = async () => {
     if (!renameValue.trim()) return;
@@ -202,10 +218,11 @@ export default function SecurityPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setApprovalCode(data.approvalCode);
         setSelectedRequest(request);
         setShowApprovalModal(true);
         fetchPendingRequests();
+        fetchDevices();
+        fetchSecurityLogs();
       } else {
         addToast(data.error || 'Failed to approve request', 'error');
       }
@@ -536,31 +553,19 @@ export default function SecurityPage() {
         danger
       />
 
-      <Modal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} title="Approval Code">
+      <Modal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} title="Device Approved">
         <div className="space-y-4">
           <div className="text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-              Share this code with the new device:
-            </p>
-            <div className="bg-slate-100 dark:bg-slate-700 rounded-2xl p-4">
-              <p className="text-3xl font-mono font-bold tracking-[0.3em] text-slate-800 dark:text-slate-100">
-                {approvalCode}
-              </p>
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-green-500 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-lg shadow-emerald-400/20 mb-4">
+              ✅
             </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-              Valid for 5 minutes
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
+              <span className="font-bold">{selectedRequest?.deviceName}</span> has been approved.
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              The device will automatically be granted access.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              navigator.clipboard.writeText(approvalCode);
-              addToast('Code copied!', 'success');
-            }}
-            variant="secondary"
-            className="w-full"
-          >
-            📋 Copy Code
-          </Button>
           <Button onClick={() => setShowApprovalModal(false)} className="w-full">
             Done
           </Button>

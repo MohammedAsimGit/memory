@@ -26,23 +26,36 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const requestId = searchParams.get('requestId');
 
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    if (!requestId) {
+      return NextResponse.json({ error: 'Request ID required' }, { status: 400 });
     }
 
-    const pendingRequests = await DeviceRequest.find({
-      userId,
-      status: 'pending',
-    }).sort({ requestedAt: -1 });
+    const deviceRequest = await DeviceRequest.findById(requestId).select('status deviceToken resolvedAt');
 
-    console.log(`[DevicePending] Fetched ${pendingRequests.length} pending requests for user ${userId}`);
+    if (!deviceRequest) {
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+    }
 
-    return NextResponse.json({ requests: pendingRequests });
+    const response: Record<string, unknown> = {
+      status: deviceRequest.status,
+      resolvedAt: deviceRequest.resolvedAt,
+    };
+
+    if (deviceRequest.status === 'approved' && deviceRequest.deviceToken) {
+      response.deviceToken = deviceRequest.deviceToken;
+      console.log(`[DeviceRequestStatus] Request ${requestId} approved, returning token to requesting device`);
+    }
+
+    if (deviceRequest.status === 'rejected') {
+      console.log(`[DeviceRequestStatus] Request ${requestId} rejected`);
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
-    console.error('[DevicePending] Error fetching pending requests:', error);
+    console.error('[DeviceRequestStatus] Error checking status:', error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
