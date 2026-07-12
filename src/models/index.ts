@@ -324,7 +324,6 @@ const InvitationCodeSchema = new Schema<IInvitationCode>(
 
 InvitationCodeSchema.index({ userId: 1, isUsed: 1 });
 InvitationCodeSchema.index({ codeHash: 1 });
-InvitationCodeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const InvitationCode: Model<IInvitationCode> =
   mongoose.models.InvitationCode || mongoose.model<IInvitationCode>('InvitationCode', InvitationCodeSchema);

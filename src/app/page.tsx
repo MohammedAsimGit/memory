@@ -43,6 +43,8 @@ export default function UnlockPage() {
   const [deviceName, setDeviceName] = useState('');
   const [invitationCode, setInvitationCode] = useState('');
   const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
+  const [debugMode, setDebugMode] = useState(false);
+  const [verifyResponse, setVerifyResponse] = useState<Record<string, unknown> | null>(null);
 
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -192,6 +194,7 @@ export default function UnlockPage() {
     if (!invitationCode.trim()) return;
     setLoading(true);
     setError('');
+    setVerifyResponse(null);
 
     try {
       const info = formatDeviceInfo();
@@ -211,6 +214,7 @@ export default function UnlockPage() {
       });
 
       const data = await res.json();
+      setVerifyResponse({ status: res.status, ...data });
 
       if (res.ok) {
         const serverToken = data.deviceToken as string;
@@ -221,7 +225,14 @@ export default function UnlockPage() {
         useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
         router.push('/home');
       } else {
-        setError(data.error || 'Invalid invitation code');
+        const reason = data.reason || 'unknown';
+        let msg = data.error || 'Invalid invitation code';
+        if (reason === 'expired') msg = 'This invitation code has expired. Ask your partner to generate a new code.';
+        else if (reason === 'used') msg = 'This code was already used. Ask your partner to generate a new code.';
+        else if (reason === 'not_found') msg = 'No invitation found for this profile. Make sure you selected the right profile.';
+        else if (reason === 'invalid_code') msg = 'Wrong code. Double-check and try again.';
+        else if (reason === 'max_devices') msg = 'Maximum 4 devices reached. Remove an existing device first.';
+        setError(msg);
       }
     } catch {
       setError('Failed to verify invitation code');
@@ -643,6 +654,39 @@ export default function UnlockPage() {
             >
               Back
             </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-6"
+          >
+            <button
+              onClick={() => setDebugMode(!debugMode)}
+              className="w-full text-center text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors py-2"
+            >
+              {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
+            </button>
+            {debugMode && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="bg-slate-900/80 dark:bg-slate-950/80 backdrop-blur-md rounded-2xl p-4 mt-2 text-xs font-mono text-green-400 space-y-2 border border-slate-700/50"
+              >
+                <div className="text-slate-300 font-bold text-sm mb-2">Debug Panel</div>
+                <div><span className="text-slate-500">Profile:</span> {selectedUserId}</div>
+                <div><span className="text-slate-500">Device:</span> {generateDeviceName()}</div>
+                <div><span className="text-slate-500">Platform:</span> {formatDeviceInfo().platform}</div>
+                <div><span className="text-slate-500">Browser:</span> {formatDeviceInfo().browser}</div>
+                <div><span className="text-slate-500">Device Token:</span> {deviceToken?.substring(0, 16) || 'None'}...</div>
+                <div><span className="text-slate-500">Input Code:</span> {invitationCode}</div>
+                <div><span className="text-slate-500">Raw Response:</span></div>
+                <pre className="text-green-300 whitespace-pre-wrap break-all bg-black/30 rounded-xl p-2 text-[10px]">
+                  {verifyResponse ? JSON.stringify(verifyResponse, null, 2) : 'No response yet'}
+                </pre>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </div>
