@@ -8,16 +8,19 @@ import { PageLoading } from '@/components/ui/LoadingSpinner';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isDeviceTrusted = useAuthStore((s) => s.isDeviceTrusted);
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
       router.replace('/');
+    } else if (!isDeviceTrusted) {
+      router.replace('/');
     } else {
       setReady(true);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isDeviceTrusted, router]);
 
   if (!ready) return <PageLoading />;
 

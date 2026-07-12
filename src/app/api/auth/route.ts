@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
     }
 
-    const token = generateToken();
+    const token = generateToken({ authenticated: true });
     return NextResponse.json({ token });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';

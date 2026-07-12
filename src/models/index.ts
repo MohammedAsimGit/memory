@@ -263,3 +263,110 @@ StoryBookSchema.index({ year: 1, createdAt: -1 });
 
 export const StoryBook: Model<IStoryBook> =
   mongoose.models.StoryBook || mongoose.model<IStoryBook>('StoryBook', StoryBookSchema);
+
+export interface ITrustedDevice extends Document {
+  userId: string;
+  deviceName: string;
+  deviceTokenHash: string;
+  platform: string;
+  browser: string;
+  isTrusted: boolean;
+  lastActive: Date;
+  registeredAt: Date;
+}
+
+const TrustedDeviceSchema = new Schema<ITrustedDevice>(
+  {
+    userId: { type: String, required: true },
+    deviceName: { type: String, required: true },
+    deviceTokenHash: { type: String, required: true },
+    platform: { type: String, default: 'Unknown' },
+    browser: { type: String, default: 'Unknown' },
+    isTrusted: { type: Boolean, default: true },
+    lastActive: { type: Date, default: Date.now },
+    registeredAt: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
+TrustedDeviceSchema.index({ userId: 1 });
+TrustedDeviceSchema.index({ userId: 1, deviceTokenHash: 1 });
+
+export const TrustedDevice: Model<ITrustedDevice> =
+  mongoose.models.TrustedDevice || mongoose.model<ITrustedDevice>('TrustedDevice', TrustedDeviceSchema);
+
+export interface IDeviceRequest extends Document {
+  userId: string;
+  deviceName: string;
+  platform: string;
+  browser: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvalCodeHash?: string;
+  approvalCodeExpires?: Date;
+  requestedAt: Date;
+  resolvedAt?: Date;
+}
+
+const DeviceRequestSchema = new Schema<IDeviceRequest>(
+  {
+    userId: { type: String, required: true },
+    deviceName: { type: String, required: true },
+    platform: { type: String, default: 'Unknown' },
+    browser: { type: String, default: 'Unknown' },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    approvalCodeHash: { type: String },
+    approvalCodeExpires: { type: Date },
+    requestedAt: { type: Date, default: Date.now },
+    resolvedAt: { type: Date },
+  },
+  { timestamps: true }
+);
+
+DeviceRequestSchema.index({ userId: 1, status: 1 });
+
+export const DeviceRequest: Model<IDeviceRequest> =
+  mongoose.models.DeviceRequest || mongoose.model<IDeviceRequest>('DeviceRequest', DeviceRequestSchema);
+
+export interface ISecurityLog extends Document {
+  userId: string;
+  event: string;
+  description: string;
+  deviceName?: string;
+  ipAddress?: string;
+}
+
+const SecurityLogSchema = new Schema<ISecurityLog>(
+  {
+    userId: { type: String, required: true },
+    event: { type: String, required: true },
+    description: { type: String, required: true },
+    deviceName: { type: String },
+    ipAddress: { type: String },
+  },
+  { timestamps: true }
+);
+
+SecurityLogSchema.index({ userId: 1, createdAt: -1 });
+
+export const SecurityLog: Model<ISecurityLog> =
+  mongoose.models.SecurityLog || mongoose.model<ISecurityLog>('SecurityLog', SecurityLogSchema);
+
+export interface IRecoveryCode extends Document {
+  userId: string;
+  codeHash: string;
+  isUsed: boolean;
+}
+
+const RecoveryCodeSchema = new Schema<IRecoveryCode>(
+  {
+    userId: { type: String, required: true },
+    codeHash: { type: String, required: true },
+    isUsed: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
+RecoveryCodeSchema.index({ userId: 1 });
+
+export const RecoveryCode: Model<IRecoveryCode> =
+  mongoose.models.RecoveryCode || mongoose.model<IRecoveryCode>('RecoveryCode', RecoveryCodeSchema);

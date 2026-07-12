@@ -348,6 +348,36 @@ export default function SettingsPage() {
         </motion.div>
 
         <motion.div variants={item}>
+          <SectionHeader icon="🛡️" title="Security" />
+          <GlassCard>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">Trusted Devices</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-400 mt-0.5">
+                    Manage devices that can access your account
+                  </p>
+                </div>
+                <Button
+                  onClick={() => router.push('/settings/security')}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Manage 🛡️
+                </Button>
+              </div>
+              <div className="border-t border-slate-100" />
+              <div>
+                <p className="font-semibold text-slate-800 dark:text-slate-100 mb-1">Security Activity</p>
+                <p className="text-xs text-slate-400 dark:text-slate-400">
+                  View device approvals, removals, and other security events
+                </p>
+              </div>
+            </div>
+          </GlassCard>
+        </motion.div>
+
+        <motion.div variants={item}>
           <SectionHeader icon="📦" title="Data" />
           <GlassCard>
             <div className="space-y-4">

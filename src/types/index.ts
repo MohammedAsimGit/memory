@@ -150,3 +150,65 @@ export interface StoryBook {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface TrustedDevice {
+  _id: string;
+  userId: string;
+  deviceName: string;
+  deviceTokenHash: string;
+  platform: string;
+  browser: string;
+  isTrusted: boolean;
+  lastActive: string;
+  registeredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DeviceRequest {
+  _id: string;
+  userId: string;
+  deviceName: string;
+  platform: string;
+  browser: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvalCodeHash?: string;
+  approvalCodeExpires?: string;
+  requestedAt: string;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SecurityLog {
+  _id: string;
+  userId: string;
+  event: string;
+  description: string;
+  deviceName?: string;
+  ipAddress?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecoveryCode {
+  _id: string;
+  userId: string;
+  codeHash: string;
+  isUsed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AuthScreen =
+  | 'splash'
+  | 'lock'
+  | 'profile'
+  | 'device-check'
+  | 'register-device'
+  | 'untrusted-device'
+  | 'approval-request'
+  | 'approval-notification'
+  | 'approval-code'
+  | 'recovery-code'
+  | 'done';
