@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, isConnected } from '@/lib/db';
 import { RecoveryCode, TrustedDevice, SecurityLog } from '@/models';
-import { verifyToken, verifyRecoveryCode, generateDeviceToken, hashDeviceToken } from '@/lib/auth';
+import { verifyToken, verifyRecoveryCode, generateDeviceToken, hashDeviceToken, VAULT_ID } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,13 +25,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { code, userId, deviceName, platform, browser } = await request.json();
+    const { code, deviceName, platform, browser, owner } = await request.json();
 
-    if (!code || !userId || !deviceName) {
+    if (!code || !deviceName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const recoveryCodes = await RecoveryCode.find({ userId, isUsed: false });
+    const recoveryCodes = await RecoveryCode.find({ vaultId: VAULT_ID, isUsed: false });
 
     let validCode = null;
     for (const rc of recoveryCodes) {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     await RecoveryCode.findByIdAndUpdate(validCode._id, { isUsed: true });
 
     await TrustedDevice.updateMany(
-      { userId, isTrusted: true },
+      { vaultId: VAULT_ID, isTrusted: true },
       { isTrusted: false }
     );
 
@@ -56,18 +56,20 @@ export async function POST(request: NextRequest) {
     const deviceTokenHash = hashDeviceToken(deviceToken);
 
     await TrustedDevice.create({
-      userId,
+      vaultId: VAULT_ID,
       deviceName,
       deviceTokenHash,
       platform: platform || 'Unknown',
       browser: browser || 'Unknown',
+      owner: owner || 'Unknown',
+      addedBy: 'Recovery',
       isTrusted: true,
       lastActive: new Date(),
       registeredAt: new Date(),
     });
 
     await SecurityLog.create({
-      userId,
+      vaultId: VAULT_ID,
       event: 'recovery_used',
       description: `Recovery code used to register "${deviceName}"`,
       deviceName,

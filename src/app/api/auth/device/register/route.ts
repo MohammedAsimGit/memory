@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, isConnected } from '@/lib/db';
 import { TrustedDevice, SecurityLog, RecoveryCode } from '@/models';
-import { verifyToken, generateDeviceToken, hashDeviceToken, generateRecoveryCode, hashRecoveryCode } from '@/lib/auth';
+import { verifyToken, generateDeviceToken, hashDeviceToken, generateRecoveryCode, hashRecoveryCode, VAULT_ID } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,19 +25,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { userId, deviceName, platform, browser } = await request.json();
+    const { deviceName, platform, browser, owner } = await request.json();
 
-    if (!userId || !deviceName) {
-      return NextResponse.json({ error: 'User ID and device name required' }, { status: 400 });
+    if (!deviceName) {
+      return NextResponse.json({ error: 'Device name required' }, { status: 400 });
     }
 
-    const deviceCount = await TrustedDevice.countDocuments({ userId, isTrusted: true });
+    const deviceCount = await TrustedDevice.countDocuments({ vaultId: VAULT_ID, isTrusted: true });
     if (deviceCount >= 4) {
       return NextResponse.json({ error: 'Maximum trusted devices reached' }, { status: 400 });
     }
 
     const existingDevice = await TrustedDevice.findOne({
-      userId,
+      vaultId: VAULT_ID,
       deviceName,
       isTrusted: true,
     });
@@ -50,18 +50,20 @@ export async function POST(request: NextRequest) {
     const deviceTokenHash = hashDeviceToken(deviceToken);
 
     const device = await TrustedDevice.create({
-      userId,
+      vaultId: VAULT_ID,
       deviceName,
       deviceTokenHash,
       platform: platform || 'Unknown',
       browser: browser || 'Unknown',
+      owner: owner || 'Unknown',
+      addedBy: 'First Device',
       isTrusted: true,
       lastActive: new Date(),
       registeredAt: new Date(),
     });
 
     await SecurityLog.create({
-      userId,
+      vaultId: VAULT_ID,
       event: 'device_registered',
       description: `Trusted device "${deviceName}" registered`,
       deviceName,
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
     const recoveryCodeHash = hashRecoveryCode(recoveryCode);
 
     await RecoveryCode.create({
-      userId,
+      vaultId: VAULT_ID,
       codeHash: recoveryCodeHash,
       isUsed: false,
     });

@@ -153,11 +153,13 @@ export interface StoryBook {
 
 export interface TrustedDevice {
   _id: string;
-  userId: string;
+  vaultId: string;
   deviceName: string;
   deviceTokenHash: string;
   platform: string;
   browser: string;
+  owner: string;
+  addedBy: string;
   isTrusted: boolean;
   lastActive: string;
   registeredAt: string;
@@ -167,10 +169,11 @@ export interface TrustedDevice {
 
 export interface InvitationCode {
   _id: string;
-  userId: string;
+  vaultId: string;
   code: string;
   codeHash: string;
-  generatedBy: string;
+  createdBy: string;
+  createdDevice: string;
   generatedAt: string;
   expiresAt: string;
   isUsed: boolean;
@@ -182,7 +185,7 @@ export interface InvitationCode {
 
 export interface SecurityLog {
   _id: string;
-  userId: string;
+  vaultId: string;
   event: string;
   description: string;
   deviceName?: string;
@@ -193,7 +196,7 @@ export interface SecurityLog {
 
 export interface RecoveryCode {
   _id: string;
-  userId: string;
+  vaultId: string;
   codeHash: string;
   isUsed: boolean;
   createdAt: string;

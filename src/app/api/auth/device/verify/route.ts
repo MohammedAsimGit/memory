@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, isConnected } from '@/lib/db';
 import { TrustedDevice } from '@/models';
-import { verifyToken, hashDeviceToken } from '@/lib/auth';
+import { verifyToken, hashDeviceToken, VAULT_ID } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,16 +25,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { deviceToken, userId } = await request.json();
+    const { deviceToken } = await request.json();
 
-    if (!deviceToken || !userId) {
-      return NextResponse.json({ error: 'Device token and user ID required' }, { status: 400 });
+    if (!deviceToken) {
+      return NextResponse.json({ error: 'Device token required' }, { status: 400 });
     }
 
     const deviceTokenHash = hashDeviceToken(deviceToken);
 
     const trustedDevice = await TrustedDevice.findOne({
-      userId,
+      vaultId: VAULT_ID,
       deviceTokenHash,
       isTrusted: true,
     });
@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
         deviceName: trustedDevice.deviceName,
         platform: trustedDevice.platform,
         browser: trustedDevice.browser,
+        owner: trustedDevice.owner,
       },
     });
   } catch (error) {

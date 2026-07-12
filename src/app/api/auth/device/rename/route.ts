@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, isConnected } from '@/lib/db';
 import { TrustedDevice, SecurityLog } from '@/models';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, VAULT_ID } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,10 +25,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { deviceId, userId, deviceName } = await request.json();
+    const { deviceId, deviceName } = await request.json();
 
-    if (!deviceId || !userId || !deviceName) {
-      return NextResponse.json({ error: 'Device ID, User ID, and device name required' }, { status: 400 });
+    if (!deviceId || !deviceName) {
+      return NextResponse.json({ error: 'Device ID and device name required' }, { status: 400 });
     }
 
     const device = await TrustedDevice.findById(deviceId);
@@ -36,15 +36,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Device not found' }, { status: 404 });
     }
 
-    if (device.userId !== userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const oldName = device.deviceName;
     await TrustedDevice.findByIdAndUpdate(deviceId, { deviceName });
 
     await SecurityLog.create({
-      userId,
+      vaultId: VAULT_ID,
       event: 'device_renamed',
       description: `Device renamed from "${oldName}" to "${deviceName}"`,
       deviceName,

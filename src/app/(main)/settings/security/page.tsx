@@ -81,12 +81,10 @@ export default function SecurityPage() {
   const [generating, setGenerating] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const userId = activeProfile || 'me';
-
   const fetchDevices = async () => {
     try {
       const token = useAuthStore.getState().token;
-      const res = await fetch(`/api/auth/devices?userId=${userId}`, {
+      const res = await fetch('/api/auth/devices', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -99,7 +97,7 @@ export default function SecurityPage() {
   const fetchSecurityLogs = async () => {
     try {
       const token = useAuthStore.getState().token;
-      const res = await fetch(`/api/auth/security-log?userId=${userId}`, {
+      const res = await fetch('/api/auth/security-log', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -117,11 +115,11 @@ export default function SecurityPage() {
 
   useEffect(() => {
     loadData();
-  }, [userId]);
+  }, []);
 
   const generateQR = useCallback(async (code: string, expiresAt: Date) => {
     try {
-      const payload = JSON.stringify({ code, expires: expiresAt.toISOString(), user: userId });
+      const payload = JSON.stringify({ code, expires: expiresAt.toISOString() });
       const dataUrl = await QRCode.toDataURL(payload, {
         width: 256,
         margin: 2,
@@ -131,7 +129,7 @@ export default function SecurityPage() {
     } catch {
       console.error('Failed to generate QR code');
     }
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     if (!invitationExpiresAt || !showInvitationModal) return;
@@ -154,14 +152,16 @@ export default function SecurityPage() {
     setGenerating(true);
     try {
       const token = useAuthStore.getState().token;
-      const deviceName = devices.find(d => d._id === deviceId)?.deviceName || 'This Device';
+      const currentDevice = devices.find(d => d._id === deviceId);
+      const deviceName = currentDevice?.deviceName || 'This Device';
+      const owner = activeProfile === 'me' ? 'me' : 'her';
       const res = await fetch('/api/auth/invitation/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId, deviceName }),
+        body: JSON.stringify({ deviceName, owner }),
       });
 
       const data = await res.json();
@@ -196,7 +196,6 @@ export default function SecurityPage() {
         },
         body: JSON.stringify({
           deviceId: renameDeviceId,
-          userId,
           deviceName: renameValue.trim(),
         }),
       });
@@ -224,7 +223,7 @@ export default function SecurityPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ deviceId: removeDeviceId, userId }),
+        body: JSON.stringify({ deviceId: removeDeviceId }),
       });
 
       if (res.ok) {
@@ -363,6 +362,14 @@ export default function SecurityPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span>Owner: {device.owner}</span>
+                      </div>
+                      {device.addedBy && device.addedBy !== 'First Device' && device.addedBy !== 'Recovery' && (
+                        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                          <span>Added by: {device.addedBy}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         <span>{device.platform}</span>
                         <span>·</span>
                         <span>{device.browser}</span>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, isConnected } from '@/lib/db';
 import { TrustedDevice, SecurityLog } from '@/models';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, VAULT_ID } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,14 +25,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
-    }
-
-    const devices = await TrustedDevice.find({ userId, isTrusted: true })
+    const devices = await TrustedDevice.find({ vaultId: VAULT_ID, isTrusted: true })
       .sort({ registeredAt: -1 });
 
     return NextResponse.json({ devices });
@@ -61,10 +54,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { deviceId, userId } = await request.json();
+    const { deviceId } = await request.json();
 
-    if (!deviceId || !userId) {
-      return NextResponse.json({ error: 'Device ID and User ID required' }, { status: 400 });
+    if (!deviceId) {
+      return NextResponse.json({ error: 'Device ID required' }, { status: 400 });
     }
 
     const device = await TrustedDevice.findById(deviceId);
@@ -72,14 +65,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Device not found' }, { status: 404 });
     }
 
-    if (device.userId !== userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     await TrustedDevice.findByIdAndUpdate(deviceId, { isTrusted: false });
 
     await SecurityLog.create({
-      userId,
+      vaultId: VAULT_ID,
       event: 'device_removed',
       description: `Trusted device "${device.deviceName}" removed`,
       deviceName: device.deviceName,

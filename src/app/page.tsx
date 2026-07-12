@@ -13,12 +13,12 @@ import type { Settings } from '@/types';
 type Screen =
   | 'splash'
   | 'lock'
-  | 'profile'
   | 'device-check'
   | 'register-device'
   | 'untrusted-device'
   | 'invitation-code'
   | 'recovery-code'
+  | 'profile'
   | 'done';
 
 const fadeIn = {
@@ -37,14 +37,12 @@ export default function UnlockPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [authToken, setAuthToken] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState('');
   const [deviceToken, setDeviceToken] = useState('');
   const [deviceId, setDeviceId] = useState('');
   const [deviceName, setDeviceName] = useState('');
   const [invitationCode, setInvitationCode] = useState('');
   const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
-  const [debugMode, setDebugMode] = useState(false);
-  const [verifyResponse, setVerifyResponse] = useState<Record<string, unknown> | null>(null);
+  const [pendingOwner, setPendingOwner] = useState<'me' | 'her' | null>(null);
 
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -77,13 +75,14 @@ export default function UnlockPage() {
 
       if (res.ok && data.token) {
         setAuthToken(data.token);
+        const token = getDeviceToken();
+        setDeviceToken(token);
 
         if (rememberProfile && activeProfile) {
-          setSelectedUserId(activeProfile === 'me' ? 'me' : 'her');
-          setDeviceToken(getDeviceToken());
+          setPendingOwner(activeProfile);
           setScreen('device-check');
         } else {
-          setScreen('profile');
+          setScreen('device-check');
         }
       } else if (res.status === 401) {
         setError('Incorrect Password');
@@ -97,12 +96,6 @@ export default function UnlockPage() {
     }
   };
 
-  const handleProfileSelected = async (profile: 'me' | 'her') => {
-    setSelectedUserId(profile);
-    setDeviceToken(getDeviceToken());
-    setScreen('device-check');
-  };
-
   const checkDeviceTrust = async () => {
     setLoading(true);
     try {
@@ -112,7 +105,7 @@ export default function UnlockPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ deviceToken, userId: selectedUserId }),
+        body: JSON.stringify({ deviceToken }),
       });
 
       const data = await res.json();
@@ -120,14 +113,19 @@ export default function UnlockPage() {
       if (data.isTrusted) {
         setDeviceId(data.device._id);
         setDeviceTokenStore(deviceToken, data.device._id, data.device.deviceName);
-        setAuth(authToken);
-        useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
-        router.push('/home');
+
+        if (pendingOwner) {
+          setAuth(authToken);
+          useAuthStore.getState().setActiveProfile(pendingOwner);
+          router.push('/home');
+        } else {
+          setScreen('profile');
+        }
       } else {
-        const deviceCount = await fetch(`/api/auth/devices?userId=${selectedUserId}`, {
+        const deviceCountRes = await fetch('/api/auth/devices', {
           headers: { Authorization: `Bearer ${authToken}` },
         });
-        const deviceData = await deviceCount.json();
+        const deviceData = await deviceCountRes.json();
 
         if (deviceData.devices && deviceData.devices.length > 0) {
           setScreen('untrusted-device');
@@ -143,13 +141,13 @@ export default function UnlockPage() {
   };
 
   useEffect(() => {
-    if (screen === 'device-check' && authToken && selectedUserId && deviceToken) {
+    if (screen === 'device-check' && authToken && deviceToken) {
       checkDeviceTrust();
     }
-  }, [screen, authToken, selectedUserId, deviceToken]);
+  }, [screen, authToken, deviceToken]);
 
-  const handleRegisterDevice = async () => {
-    if (!deviceName.trim()) return;
+  const handleProfileSelected = async (profile: 'me' | 'her') => {
+    setPendingOwner(profile);
     setLoading(true);
     setError('');
 
@@ -162,10 +160,10 @@ export default function UnlockPage() {
           Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          userId: selectedUserId,
-          deviceName: deviceName.trim(),
+          deviceName: generateDeviceName(),
           platform: info.platform,
           browser: info.browser,
+          owner: profile === 'me' ? name1 : name2,
         }),
       });
 
@@ -175,10 +173,10 @@ export default function UnlockPage() {
         const serverToken = data.deviceToken as string;
         localStorage.setItem('our-story-device-token', serverToken);
         setDeviceToken(serverToken);
-        setDeviceTokenStore(serverToken, data.deviceId, deviceName.trim());
+        setDeviceTokenStore(serverToken, data.deviceId, generateDeviceName());
         setDeviceId(data.deviceId);
         setAuth(authToken);
-        useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
+        useAuthStore.getState().setActiveProfile(profile);
         router.push('/home');
       } else {
         setError(data.error || 'Failed to register device');
@@ -194,7 +192,6 @@ export default function UnlockPage() {
     if (!invitationCode.trim()) return;
     setLoading(true);
     setError('');
-    setVerifyResponse(null);
 
     try {
       const info = formatDeviceInfo();
@@ -206,7 +203,6 @@ export default function UnlockPage() {
         },
         body: JSON.stringify({
           code: invitationCode.trim(),
-          userId: selectedUserId,
           deviceName: generateDeviceName(),
           platform: info.platform,
           browser: info.browser,
@@ -214,22 +210,21 @@ export default function UnlockPage() {
       });
 
       const data = await res.json();
-      setVerifyResponse({ status: res.status, ...data });
 
       if (res.ok) {
         const serverToken = data.deviceToken as string;
         localStorage.setItem('our-story-device-token', serverToken);
         setDeviceToken(serverToken);
         setDeviceTokenStore(serverToken, data.deviceId, generateDeviceName());
+        setDeviceId(data.deviceId);
         setAuth(authToken);
-        useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
-        router.push('/home');
+        setScreen('profile');
       } else {
         const reason = data.reason || 'unknown';
         let msg = data.error || 'Invalid invitation code';
         if (reason === 'expired') msg = 'This invitation code has expired. Ask your partner to generate a new code.';
         else if (reason === 'used') msg = 'This code was already used. Ask your partner to generate a new code.';
-        else if (reason === 'not_found') msg = 'No invitation found for this profile. Make sure you selected the right profile.';
+        else if (reason === 'not_found') msg = 'No invitation found. Generate a new code from a trusted device.';
         else if (reason === 'invalid_code') msg = 'Wrong code. Double-check and try again.';
         else if (reason === 'max_devices') msg = 'Maximum 4 devices reached. Remove an existing device first.';
         setError(msg);
@@ -256,7 +251,6 @@ export default function UnlockPage() {
         },
         body: JSON.stringify({
           code: recoveryCodeInput.trim().toUpperCase(),
-          userId: selectedUserId,
           deviceName: generateDeviceName(),
           platform: info.platform,
           browser: info.browser,
@@ -271,8 +265,7 @@ export default function UnlockPage() {
         setDeviceToken(serverToken);
         setDeviceTokenStore(serverToken, data.deviceId, generateDeviceName());
         setAuth(authToken);
-        useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
-        router.push('/home');
+        setScreen('profile');
       } else {
         setError(data.error || 'Invalid recovery code');
       }
@@ -304,7 +297,6 @@ export default function UnlockPage() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       if (screen === 'lock') handleUnlock();
-      else if (screen === 'register-device') handleRegisterDevice();
       else if (screen === 'invitation-code') handleVerifyInvitation();
       else if (screen === 'recovery-code') handleRecoveryCode();
     }
@@ -335,90 +327,71 @@ export default function UnlockPage() {
     );
   }
 
-  if (screen === 'profile') {
+  if (screen === 'lock') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex flex-col items-center justify-center px-6">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
-        >
+      <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+        <CloudBackground />
+        <div className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center">
           <motion.div
-            animate={{ y: [0, -6, 0] }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="text-5xl mb-4"
+            initial={{ opacity: 0, scale: 0.8, y: -30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.8, type: 'spring', stiffness: 100 }}
+            className="text-center mb-10"
           >
-            💙
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 3, repeat: Infinity }}
+              className="w-24 h-24 bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] rounded-[2rem] mx-auto flex items-center justify-center text-5xl shadow-2xl shadow-blue-400/30 mb-6"
+            >
+              🔒
+            </motion.div>
+            <h1 className="text-4xl font-black text-gradient mb-2 tracking-tight">
+              Our Story
+            </h1>
+            <p className="text-slate-500 dark:text-slate-300 font-medium">Only You & Me</p>
           </motion.div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
-            Who&apos;s using Our Story?
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-300">
-            Select your profile to continue
-          </p>
-        </motion.div>
 
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          animate="show"
-          className="w-full max-w-sm grid grid-cols-1 gap-4 mb-8"
-        >
-          <motion.button
-            variants={fadeIn}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => handleProfileSelected('me')}
-            className="relative p-6 rounded-3xl text-left border-2 border-transparent bg-white/60 dark:bg-slate-800/60 shadow-lg hover:border-sky-400 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300"
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="w-full space-y-4"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-blue-400/30">
-                {name1[0]?.toUpperCase() || 'A'}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{name1}</p>
-                  <span className="px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 text-[10px] font-semibold border border-sky-200/50 dark:border-sky-700/30">
-                    🩵 You
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 dark:text-slate-400">My memories & moments</p>
-              </div>
+            <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-1 shadow-lg shadow-sky-200/30 dark:shadow-black/20 border border-white/50 dark:border-slate-700/50">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter secret password..."
+                autoFocus
+                className="w-full bg-transparent px-5 py-4 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none text-base font-medium"
+              />
             </div>
-          </motion.button>
 
-          <motion.button
-            variants={fadeIn}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => handleProfileSelected('her')}
-            className="relative p-6 rounded-3xl text-left border-2 border-transparent bg-white/60 dark:bg-slate-800/60 shadow-lg hover:border-purple-400 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#C084FC] to-[#A855F7] flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-purple-400/30">
-                {name2[0]?.toUpperCase() || 'H'}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{name2}</p>
-                  <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[10px] font-semibold border border-purple-200/50 dark:border-purple-700/30">
-                    💜 Her
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 dark:text-slate-400">Her memories & moments</p>
-              </div>
-            </div>
-          </motion.button>
-        </motion.div>
+            <motion.div
+              animate={error ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+              transition={{ duration: 0.4 }}
+            >
+              {error && (
+                <p className="text-red-500 text-sm text-center mb-2 font-medium">{error}</p>
+              )}
+            </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-xs text-slate-400 dark:text-slate-400 text-center"
-        >
-          You can switch profiles anytime from the Profile page
-        </motion.p>
+            <Button
+              onClick={handleUnlock}
+              size="lg"
+              className="w-full text-lg rounded-2xl"
+              loading={loading}
+            >
+              Unlock ❤️
+            </Button>
+
+            <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
+              A private space for two hearts
+            </p>
+          </motion.div>
+        </div>
       </div>
     );
   }
@@ -492,23 +465,6 @@ export default function UnlockPage() {
                   </div>
                 </div>
               </div>
-
-              <div className="border-t border-slate-200/50 dark:border-slate-700/50" />
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1.5 ml-1">
-                  Device Name
-                </label>
-                <input
-                  type="text"
-                  value={deviceName || generateDeviceName()}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="e.g., My Phone"
-                  autoFocus
-                  className="w-full bg-white/80 dark:bg-slate-700/80 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-2xl px-4 py-3 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 focus:border-[#2196F3]/50 transition-all"
-                />
-              </div>
             </div>
           </motion.div>
 
@@ -527,15 +483,27 @@ export default function UnlockPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Button
-              onClick={handleRegisterDevice}
-              size="lg"
-              className="w-full text-lg rounded-2xl"
-              loading={loading}
-              disabled={!deviceName.trim()}
-            >
-              Register Device 🛡️
-            </Button>
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-3 font-medium">
+              Who is using this device?
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => handleProfileSelected('me')}
+                size="lg"
+                className="rounded-2xl"
+                loading={loading}
+              >
+                {name1}
+              </Button>
+              <Button
+                onClick={() => handleProfileSelected('her')}
+                size="lg"
+                className="rounded-2xl"
+                loading={loading}
+              >
+                {name2}
+              </Button>
+            </div>
           </motion.div>
         </div>
       </div>
@@ -646,7 +614,6 @@ export default function UnlockPage() {
                 setPassword('');
                 setError('');
                 setAuthToken('');
-                setSelectedUserId('');
                 setInvitationCode('');
               }}
               variant="ghost"
@@ -654,39 +621,6 @@ export default function UnlockPage() {
             >
               Back
             </Button>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-6"
-          >
-            <button
-              onClick={() => setDebugMode(!debugMode)}
-              className="w-full text-center text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors py-2"
-            >
-              {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
-            </button>
-            {debugMode && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="bg-slate-900/80 dark:bg-slate-950/80 backdrop-blur-md rounded-2xl p-4 mt-2 text-xs font-mono text-green-400 space-y-2 border border-slate-700/50"
-              >
-                <div className="text-slate-300 font-bold text-sm mb-2">Debug Panel</div>
-                <div><span className="text-slate-500">Profile:</span> {selectedUserId}</div>
-                <div><span className="text-slate-500">Device:</span> {generateDeviceName()}</div>
-                <div><span className="text-slate-500">Platform:</span> {formatDeviceInfo().platform}</div>
-                <div><span className="text-slate-500">Browser:</span> {formatDeviceInfo().browser}</div>
-                <div><span className="text-slate-500">Device Token:</span> {deviceToken?.substring(0, 16) || 'None'}...</div>
-                <div><span className="text-slate-500">Input Code:</span> {invitationCode}</div>
-                <div><span className="text-slate-500">Raw Response:</span></div>
-                <pre className="text-green-300 whitespace-pre-wrap break-all bg-black/30 rounded-xl p-2 text-[10px]">
-                  {verifyResponse ? JSON.stringify(verifyResponse, null, 2) : 'No response yet'}
-                </pre>
-              </motion.div>
-            )}
           </motion.div>
         </div>
       </div>
@@ -793,72 +727,93 @@ export default function UnlockPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
-      <CloudBackground />
-
-      <div className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center">
+  if (screen === 'profile') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex flex-col items-center justify-center px-6">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, y: -30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, type: 'spring', stiffness: 100 }}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
           <motion.div
-            animate={{ y: [0, -8, 0] }}
+            animate={{ y: [0, -6, 0] }}
             transition={{ duration: 3, repeat: Infinity }}
-            className="w-24 h-24 bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] rounded-[2rem] mx-auto flex items-center justify-center text-5xl shadow-2xl shadow-blue-400/30 mb-6"
+            className="text-5xl mb-4"
           >
-            🔒
+            💙
           </motion.div>
-
-          <h1 className="text-4xl font-black text-gradient mb-2 tracking-tight">
-            Our Story
+          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
+            Who&apos;s using Our Story?
           </h1>
-          <p className="text-slate-500 dark:text-slate-300 font-medium">Only You & Me</p>
+          <p className="text-sm text-slate-500 dark:text-slate-300">
+            Select your profile to continue
+          </p>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-          className="w-full space-y-4"
+          variants={stagger}
+          initial="hidden"
+          animate="show"
+          className="w-full max-w-sm grid grid-cols-1 gap-4 mb-8"
         >
-          <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-1 shadow-lg shadow-sky-200/30 dark:shadow-black/20 border border-white/50 dark:border-slate-700/50">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(''); }}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter secret password..."
-              autoFocus
-              className="w-full bg-transparent px-5 py-4 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none text-base font-medium"
-            />
-          </div>
-
-          <motion.div
-            animate={error ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-            transition={{ duration: 0.4 }}
+          <motion.button
+            variants={fadeIn}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => handleProfileSelected('me')}
+            className="relative p-6 rounded-3xl text-left border-2 border-transparent bg-white/60 dark:bg-slate-800/60 shadow-lg hover:border-sky-400 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300"
           >
-            {error && (
-              <p className="text-red-500 text-sm text-center mb-2 font-medium">{error}</p>
-            )}
-          </motion.div>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-blue-400/30">
+                {name1[0]?.toUpperCase() || 'A'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{name1}</p>
+                  <span className="px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 text-[10px] font-semibold border border-sky-200/50 dark:border-sky-700/30">
+                    🩵 You
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-slate-400">My memories & moments</p>
+              </div>
+            </div>
+          </motion.button>
 
-          <Button
-            onClick={handleUnlock}
-            size="lg"
-            className="w-full text-lg rounded-2xl"
-            loading={loading}
+          <motion.button
+            variants={fadeIn}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => handleProfileSelected('her')}
+            className="relative p-6 rounded-3xl text-left border-2 border-transparent bg-white/60 dark:bg-slate-800/60 shadow-lg hover:border-purple-400 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300"
           >
-            Unlock ❤️
-          </Button>
-
-          <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
-            A private space for two hearts
-          </p>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#C084FC] to-[#A855F7] flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-purple-400/30">
+                {name2[0]?.toUpperCase() || 'H'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{name2}</p>
+                  <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[10px] font-semibold border border-purple-200/50 dark:border-purple-700/30">
+                    💜 Her
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-slate-400">Her memories & moments</p>
+              </div>
+            </div>
+          </motion.button>
         </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-xs text-slate-400 dark:text-slate-400 text-center"
+        >
+          You can switch profiles anytime from the Profile page
+        </motion.p>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }

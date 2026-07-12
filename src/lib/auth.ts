@@ -5,6 +5,8 @@ import crypto from 'crypto';
 const JWT_SECRET = process.env.JWT_SECRET || 'our-story-secret-key-2024';
 const SALT_ROUNDS = 12;
 
+export const VAULT_ID = 'main';
+
 const INVITATION_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 export async function hashPassword(password: string): Promise<string> {

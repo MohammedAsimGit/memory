@@ -265,11 +265,13 @@ export const StoryBook: Model<IStoryBook> =
   mongoose.models.StoryBook || mongoose.model<IStoryBook>('StoryBook', StoryBookSchema);
 
 export interface ITrustedDevice extends Document {
-  userId: string;
+  vaultId: string;
   deviceName: string;
   deviceTokenHash: string;
   platform: string;
   browser: string;
+  owner: string;
+  addedBy: string;
   isTrusted: boolean;
   lastActive: Date;
   registeredAt: Date;
@@ -277,11 +279,13 @@ export interface ITrustedDevice extends Document {
 
 const TrustedDeviceSchema = new Schema<ITrustedDevice>(
   {
-    userId: { type: String, required: true },
+    vaultId: { type: String, required: true, default: 'main' },
     deviceName: { type: String, required: true },
     deviceTokenHash: { type: String, required: true },
     platform: { type: String, default: 'Unknown' },
     browser: { type: String, default: 'Unknown' },
+    owner: { type: String, required: true },
+    addedBy: { type: String, required: true },
     isTrusted: { type: Boolean, default: true },
     lastActive: { type: Date, default: Date.now },
     registeredAt: { type: Date, default: Date.now },
@@ -289,17 +293,18 @@ const TrustedDeviceSchema = new Schema<ITrustedDevice>(
   { timestamps: true }
 );
 
-TrustedDeviceSchema.index({ userId: 1 });
-TrustedDeviceSchema.index({ userId: 1, deviceTokenHash: 1 });
+TrustedDeviceSchema.index({ vaultId: 1 });
+TrustedDeviceSchema.index({ vaultId: 1, deviceTokenHash: 1 });
 
 export const TrustedDevice: Model<ITrustedDevice> =
   mongoose.models.TrustedDevice || mongoose.model<ITrustedDevice>('TrustedDevice', TrustedDeviceSchema);
 
 export interface IInvitationCode extends Document {
-  userId: string;
+  vaultId: string;
   code: string;
   codeHash: string;
-  generatedBy: string;
+  createdBy: string;
+  createdDevice: string;
   generatedAt: Date;
   expiresAt: Date;
   isUsed: boolean;
@@ -309,10 +314,11 @@ export interface IInvitationCode extends Document {
 
 const InvitationCodeSchema = new Schema<IInvitationCode>(
   {
-    userId: { type: String, required: true },
+    vaultId: { type: String, required: true, default: 'main' },
     code: { type: String, required: true },
     codeHash: { type: String, required: true },
-    generatedBy: { type: String, required: true },
+    createdBy: { type: String, required: true },
+    createdDevice: { type: String, required: true },
     generatedAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, required: true },
     isUsed: { type: Boolean, default: false },
@@ -322,14 +328,14 @@ const InvitationCodeSchema = new Schema<IInvitationCode>(
   { timestamps: true }
 );
 
-InvitationCodeSchema.index({ userId: 1, isUsed: 1 });
+InvitationCodeSchema.index({ vaultId: 1, isUsed: 1 });
 InvitationCodeSchema.index({ codeHash: 1 });
 
 export const InvitationCode: Model<IInvitationCode> =
   mongoose.models.InvitationCode || mongoose.model<IInvitationCode>('InvitationCode', InvitationCodeSchema);
 
 export interface ISecurityLog extends Document {
-  userId: string;
+  vaultId: string;
   event: string;
   description: string;
   deviceName?: string;
@@ -338,7 +344,7 @@ export interface ISecurityLog extends Document {
 
 const SecurityLogSchema = new Schema<ISecurityLog>(
   {
-    userId: { type: String, required: true },
+    vaultId: { type: String, required: true, default: 'main' },
     event: { type: String, required: true },
     description: { type: String, required: true },
     deviceName: { type: String },
@@ -347,27 +353,27 @@ const SecurityLogSchema = new Schema<ISecurityLog>(
   { timestamps: true }
 );
 
-SecurityLogSchema.index({ userId: 1, createdAt: -1 });
+SecurityLogSchema.index({ vaultId: 1, createdAt: -1 });
 
 export const SecurityLog: Model<ISecurityLog> =
   mongoose.models.SecurityLog || mongoose.model<ISecurityLog>('SecurityLog', SecurityLogSchema);
 
 export interface IRecoveryCode extends Document {
-  userId: string;
+  vaultId: string;
   codeHash: string;
   isUsed: boolean;
 }
 
 const RecoveryCodeSchema = new Schema<IRecoveryCode>(
   {
-    userId: { type: String, required: true },
+    vaultId: { type: String, required: true, default: 'main' },
     codeHash: { type: String, required: true },
     isUsed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-RecoveryCodeSchema.index({ userId: 1 });
+RecoveryCodeSchema.index({ vaultId: 1 });
 
 export const RecoveryCode: Model<IRecoveryCode> =
   mongoose.models.RecoveryCode || mongoose.model<IRecoveryCode>('RecoveryCode', RecoveryCodeSchema);
