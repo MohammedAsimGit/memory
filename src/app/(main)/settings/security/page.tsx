@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import QRCode from 'qrcode';
 import GlassCard from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { useApi } from '@/hooks/useApi';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from '@/hooks/useToast';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/modals/ConfirmModal';
-import type { TrustedDevice, DeviceRequest, SecurityLog } from '@/types';
+import type { TrustedDevice, SecurityLog } from '@/types';
 
 const container = {
   hidden: { opacity: 0 },
@@ -28,11 +28,8 @@ const getEventIcon = (event: string) => {
   switch (event) {
     case 'device_registered': return '📱';
     case 'device_removed': return '🗑️';
-    case 'device_request': return '📨';
-    case 'device_approved': return '✅';
-    case 'device_rejected': return '❌';
     case 'device_renamed': return '✏️';
-    case 'approval_code_generated': return '🔢';
+    case 'invitation_generated': return '🔗';
     case 'recovery_used': return '🔑';
     case 'password_changed': return '🔐';
     default: return '📋';
@@ -42,29 +39,32 @@ const getEventIcon = (event: string) => {
 const getEventColor = (event: string) => {
   switch (event) {
     case 'device_registered':
-    case 'device_approved':
     case 'recovery_used': return 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20';
-    case 'device_removed':
-    case 'device_rejected': return 'text-red-500 bg-red-50 dark:bg-red-900/20';
-    case 'device_request':
-    case 'approval_code_generated': return 'text-amber-500 bg-amber-50 dark:bg-amber-900/20';
+    case 'device_removed': return 'text-red-500 bg-red-50 dark:bg-red-900/20';
+    case 'invitation_generated': return 'text-amber-500 bg-amber-50 dark:bg-amber-900/20';
     case 'device_renamed': return 'text-blue-500 bg-blue-50 dark:bg-blue-900/20';
     default: return 'text-slate-500 bg-slate-50 dark:bg-slate-800';
   }
 };
 
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return '00:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
 export default function SecurityPage() {
   const router = useRouter();
   const { addToast, ToastContainer } = useToast();
   const activeProfile = useAuthStore((s) => s.activeProfile);
-  const deviceToken = useAuthStore((s) => s.deviceToken);
   const deviceId = useAuthStore((s) => s.deviceId);
 
   const [devices, setDevices] = useState<TrustedDevice[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<DeviceRequest[]>([]);
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'devices' | 'requests' | 'activity'>('devices');
+  const [activeTab, setActiveTab] = useState<'devices' | 'activity'>('devices');
 
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameDeviceId, setRenameDeviceId] = useState('');
@@ -72,8 +72,13 @@ export default function SecurityPage() {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [removeDeviceId, setRemoveDeviceId] = useState('');
   const [removeDeviceName, setRemoveDeviceName] = useState('');
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<DeviceRequest | null>(null);
+  const [showInvitationModal, setShowInvitationModal] = useState(false);
+  const [invitationCode, setInvitationCode] = useState('');
+  const [invitationId, setInvitationId] = useState('');
+  const [invitationExpiresAt, setInvitationExpiresAt] = useState<Date | null>(null);
+  const [countdown, setCountdown] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [generating, setGenerating] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   const userId = activeProfile || 'me';
@@ -88,19 +93,6 @@ export default function SecurityPage() {
       setDevices(data.devices || []);
     } catch {
       addToast('Failed to load devices', 'error');
-    }
-  };
-
-  const fetchPendingRequests = async () => {
-    try {
-      const token = useAuthStore.getState().token;
-      const res = await fetch(`/api/auth/device/pending?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setPendingRequests(data.requests || []);
-    } catch {
-      addToast('Failed to load requests', 'error');
     }
   };
 
@@ -119,7 +111,7 @@ export default function SecurityPage() {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([fetchDevices(), fetchPendingRequests(), fetchSecurityLogs()]);
+    await Promise.all([fetchDevices(), fetchSecurityLogs()]);
     setLoading(false);
   };
 
@@ -127,22 +119,69 @@ export default function SecurityPage() {
     loadData();
   }, [userId]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchPendingRequests();
-    }, 10000);
-
-    return () => clearInterval(interval);
+  const generateQR = useCallback(async (code: string, expiresAt: Date) => {
+    try {
+      const payload = JSON.stringify({ code, expires: expiresAt.toISOString(), user: userId });
+      const dataUrl = await QRCode.toDataURL(payload, {
+        width: 256,
+        margin: 2,
+        color: { dark: '#1976D2', light: '#ffffff' },
+      });
+      setQrDataUrl(dataUrl);
+    } catch {
+      console.error('Failed to generate QR code');
+    }
   }, [userId]);
 
-  const prevRequestCountRef = useRef(pendingRequests.length);
-
   useEffect(() => {
-    if (pendingRequests.length > prevRequestCountRef.current) {
-      addToast('New device access request received!', 'info');
+    if (!invitationExpiresAt || !showInvitationModal) return;
+
+    const updateCountdown = () => {
+      const remaining = invitationExpiresAt.getTime() - Date.now();
+      if (remaining <= 0) {
+        setCountdown('00:00');
+        return;
+      }
+      setCountdown(formatCountdown(remaining));
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [invitationExpiresAt, showInvitationModal]);
+
+  const handleGenerateInvitation = async () => {
+    setGenerating(true);
+    try {
+      const token = useAuthStore.getState().token;
+      const deviceName = devices.find(d => d._id === deviceId)?.deviceName || 'This Device';
+      const res = await fetch('/api/auth/invitation/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, deviceName }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setInvitationCode(data.code);
+        setInvitationId(data.invitationId);
+        const expires = new Date(data.expiresAt);
+        setInvitationExpiresAt(expires);
+        setShowInvitationModal(true);
+        generateQR(data.code, expires);
+        fetchSecurityLogs();
+      } else {
+        addToast(data.error || 'Failed to generate code', 'error');
+      }
+    } catch {
+      addToast('Failed to generate invitation code', 'error');
     }
-    prevRequestCountRef.current = pendingRequests.length;
-  }, [pendingRequests.length]);
+    setGenerating(false);
+  };
 
   const handleRenameDevice = async () => {
     if (!renameValue.trim()) return;
@@ -202,62 +241,6 @@ export default function SecurityPage() {
     setProcessing(false);
   };
 
-  const handleApproveRequest = async (request: DeviceRequest) => {
-    setProcessing(true);
-    try {
-      const token = useAuthStore.getState().token;
-      const res = await fetch('/api/auth/device/approve', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ requestId: request._id }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setSelectedRequest(request);
-        setShowApprovalModal(true);
-        fetchPendingRequests();
-        fetchDevices();
-        fetchSecurityLogs();
-      } else {
-        addToast(data.error || 'Failed to approve request', 'error');
-      }
-    } catch {
-      addToast('Failed to approve request', 'error');
-    }
-    setProcessing(false);
-  };
-
-  const handleRejectRequest = async (request: DeviceRequest) => {
-    setProcessing(true);
-    try {
-      const token = useAuthStore.getState().token;
-      const res = await fetch('/api/auth/device/reject', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ requestId: request._id }),
-      });
-
-      if (res.ok) {
-        addToast('Request rejected', 'success');
-        fetchPendingRequests();
-        fetchSecurityLogs();
-      } else {
-        addToast('Failed to reject request', 'error');
-      }
-    } catch {
-      addToast('Failed to reject request', 'error');
-    }
-    setProcessing(false);
-  };
-
   const formatDate = (date: string) => {
     const d = new Date(date);
     const now = new Date();
@@ -299,7 +282,7 @@ export default function SecurityPage() {
             ←
           </button>
           <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-            Security
+            Trusted Devices
           </h1>
         </div>
         <p className="text-sm text-slate-400 dark:text-slate-400 mt-1 ml-13">
@@ -309,7 +292,7 @@ export default function SecurityPage() {
 
       <motion.div variants={item} className="mb-6">
         <div className="flex gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md rounded-2xl p-1">
-          {(['devices', 'requests', 'activity'] as const).map((tab) => (
+          {(['devices', 'activity'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -320,7 +303,6 @@ export default function SecurityPage() {
               }`}
             >
               {tab === 'devices' && '📱 Devices'}
-              {tab === 'requests' && `📨 Requests${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ''}`}
               {tab === 'activity' && '📋 Activity'}
             </button>
           ))}
@@ -334,6 +316,15 @@ export default function SecurityPage() {
               {devices.length}/4 Devices
             </p>
           </div>
+
+          <Button
+            onClick={handleGenerateInvitation}
+            loading={generating}
+            className="w-full rounded-2xl"
+            size="lg"
+          >
+            ➕ Add New Device
+          </Button>
 
           {devices.length === 0 ? (
             <GlassCard>
@@ -418,72 +409,6 @@ export default function SecurityPage() {
         </motion.div>
       )}
 
-      {activeTab === 'requests' && (
-        <motion.div variants={item} className="space-y-4">
-          {pendingRequests.length === 0 ? (
-            <GlassCard>
-              <div className="text-center py-8">
-                <span className="text-4xl mb-3 block">📨</span>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">No pending requests</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                  Device access requests will appear here
-                </p>
-              </div>
-            </GlassCard>
-          ) : (
-            pendingRequests.map((request) => (
-              <motion.div
-                key={request._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <GlassCard>
-                  <div className="flex items-start gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-xl shadow-lg shadow-amber-400/20 flex-shrink-0">
-                      📨
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                        {request.deviceName}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <span>{request.platform}</span>
-                        <span>·</span>
-                        <span>{request.browser}</span>
-                      </div>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                        Requested {formatDate(request.requestedAt)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleApproveRequest(request)}
-                      variant="primary"
-                      size="sm"
-                      className="flex-1"
-                      loading={processing}
-                    >
-                      ✅ Approve
-                    </Button>
-                    <Button
-                      onClick={() => handleRejectRequest(request)}
-                      variant="danger"
-                      size="sm"
-                      className="flex-1"
-                      loading={processing}
-                    >
-                      ❌ Reject
-                    </Button>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))
-          )}
-        </motion.div>
-      )}
-
       {activeTab === 'activity' && (
         <motion.div variants={item} className="space-y-3">
           {securityLogs.length === 0 ? (
@@ -553,22 +478,75 @@ export default function SecurityPage() {
         danger
       />
 
-      <Modal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} title="Device Approved">
-        <div className="space-y-4">
+      <Modal
+        isOpen={showInvitationModal}
+        onClose={() => {
+          setShowInvitationModal(false);
+          setInvitationCode('');
+          setInvitationExpiresAt(null);
+          setQrDataUrl('');
+        }}
+        title="Add New Device"
+      >
+        <div className="space-y-5">
           <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-green-500 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-lg shadow-emerald-400/20 mb-4">
-              ✅
+            <div className="w-16 h-16 bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-lg shadow-blue-400/20 mb-4">
+              🔗
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
-              <span className="font-bold">{selectedRequest?.deviceName}</span> has been approved.
+              Share this code with the new device
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-500">
-              The device will automatically be granted access.
+              Generate a temporary invitation code for another device.
             </p>
           </div>
-          <Button onClick={() => setShowApprovalModal(false)} className="w-full">
-            Done
-          </Button>
+
+          <div className="bg-slate-100 dark:bg-slate-700 rounded-2xl p-4 text-center">
+            <p className="text-2xl font-mono font-bold tracking-[0.15em] text-slate-800 dark:text-slate-100">
+              {invitationCode}
+            </p>
+          </div>
+
+          {invitationExpiresAt && (
+            <div className="text-center">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">Expires in</p>
+              <p className={`text-lg font-mono font-bold ${countdown === '00:00' ? 'text-red-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                {countdown}
+              </p>
+            </div>
+          )}
+
+          {qrDataUrl && (
+            <div className="flex justify-center">
+              <div className="bg-white rounded-2xl p-3 shadow-lg">
+                <img src={qrDataUrl} alt="Invitation QR Code" className="w-40 h-40" />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Button
+              onClick={() => {
+                navigator.clipboard.writeText(invitationCode);
+                addToast('Code copied!', 'success');
+              }}
+              variant="secondary"
+              className="w-full"
+            >
+              📋 Copy Code
+            </Button>
+            <Button
+              onClick={() => {
+                setShowInvitationModal(false);
+                setInvitationCode('');
+                setInvitationExpiresAt(null);
+                setQrDataUrl('');
+              }}
+              className="w-full"
+            >
+              Done
+            </Button>
+          </div>
         </div>
       </Modal>
     </motion.div>

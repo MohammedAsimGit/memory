@@ -165,19 +165,17 @@ export interface TrustedDevice {
   updatedAt: string;
 }
 
-export interface DeviceRequest {
+export interface InvitationCode {
   _id: string;
   userId: string;
-  deviceName: string;
-  requestDeviceId?: string;
-  platform: string;
-  browser: string;
-  status: 'pending' | 'approved' | 'rejected';
-  approvalCodeHash?: string;
-  approvalCodeExpires?: string;
-  deviceToken?: string;
-  requestedAt: string;
-  resolvedAt?: string;
+  code: string;
+  codeHash: string;
+  generatedBy: string;
+  generatedAt: string;
+  expiresAt: string;
+  isUsed: boolean;
+  usedAt?: string;
+  usedByDevice?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -209,8 +207,6 @@ export type AuthScreen =
   | 'device-check'
   | 'register-device'
   | 'untrusted-device'
-  | 'approval-request'
-  | 'approval-notification'
-  | 'approval-code'
+  | 'invitation-code'
   | 'recovery-code'
   | 'done';

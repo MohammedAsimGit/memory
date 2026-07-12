@@ -295,41 +295,39 @@ TrustedDeviceSchema.index({ userId: 1, deviceTokenHash: 1 });
 export const TrustedDevice: Model<ITrustedDevice> =
   mongoose.models.TrustedDevice || mongoose.model<ITrustedDevice>('TrustedDevice', TrustedDeviceSchema);
 
-export interface IDeviceRequest extends Document {
+export interface IInvitationCode extends Document {
   userId: string;
-  deviceName: string;
-  requestDeviceId?: string;
-  platform: string;
-  browser: string;
-  status: 'pending' | 'approved' | 'rejected';
-  approvalCodeHash?: string;
-  approvalCodeExpires?: Date;
-  deviceToken?: string;
-  requestedAt: Date;
-  resolvedAt?: Date;
+  code: string;
+  codeHash: string;
+  generatedBy: string;
+  generatedAt: Date;
+  expiresAt: Date;
+  isUsed: boolean;
+  usedAt?: Date;
+  usedByDevice?: string;
 }
 
-const DeviceRequestSchema = new Schema<IDeviceRequest>(
+const InvitationCodeSchema = new Schema<IInvitationCode>(
   {
     userId: { type: String, required: true },
-    deviceName: { type: String, required: true },
-    requestDeviceId: { type: String },
-    platform: { type: String, default: 'Unknown' },
-    browser: { type: String, default: 'Unknown' },
-    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-    approvalCodeHash: { type: String },
-    approvalCodeExpires: { type: Date },
-    deviceToken: { type: String },
-    requestedAt: { type: Date, default: Date.now },
-    resolvedAt: { type: Date },
+    code: { type: String, required: true },
+    codeHash: { type: String, required: true },
+    generatedBy: { type: String, required: true },
+    generatedAt: { type: Date, default: Date.now },
+    expiresAt: { type: Date, required: true },
+    isUsed: { type: Boolean, default: false },
+    usedAt: { type: Date },
+    usedByDevice: { type: String },
   },
   { timestamps: true }
 );
 
-DeviceRequestSchema.index({ userId: 1, status: 1 });
+InvitationCodeSchema.index({ userId: 1, isUsed: 1 });
+InvitationCodeSchema.index({ codeHash: 1 });
+InvitationCodeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-export const DeviceRequest: Model<IDeviceRequest> =
-  mongoose.models.DeviceRequest || mongoose.model<IDeviceRequest>('DeviceRequest', DeviceRequestSchema);
+export const InvitationCode: Model<IInvitationCode> =
+  mongoose.models.InvitationCode || mongoose.model<IInvitationCode>('InvitationCode', InvitationCodeSchema);
 
 export interface ISecurityLog extends Document {
   userId: string;

@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import Button from '@/components/ui/Button';
 import CloudBackground from '@/components/layout/CloudBackground';
 import { getDeviceToken, formatDeviceInfo } from '@/lib/deviceUtils';
 import { useApi } from '@/hooks/useApi';
-import type { Settings, TrustedDevice } from '@/types';
+import type { Settings } from '@/types';
 
 type Screen =
   | 'splash'
@@ -17,9 +17,7 @@ type Screen =
   | 'device-check'
   | 'register-device'
   | 'untrusted-device'
-  | 'approval-request'
-  | 'approval-code'
-  | 'recovery-option'
+  | 'invitation-code'
   | 'recovery-code'
   | 'done';
 
@@ -43,11 +41,8 @@ export default function UnlockPage() {
   const [deviceToken, setDeviceToken] = useState('');
   const [deviceId, setDeviceId] = useState('');
   const [deviceName, setDeviceName] = useState('');
-  const [approvalRequestId, setApprovalRequestId] = useState('');
-  const [approvalCode, setApprovalCode] = useState('');
+  const [invitationCode, setInvitationCode] = useState('');
   const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
-  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
-  const [requestRejected, setRequestRejected] = useState(false);
 
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -151,47 +146,6 @@ export default function UnlockPage() {
     }
   }, [screen, authToken, selectedUserId, deviceToken]);
 
-  useEffect(() => {
-    if (screen !== 'approval-request' || !approvalRequestId || !authToken) return;
-
-    let cancelled = false;
-
-    const pollStatus = async () => {
-      try {
-        const res = await fetch(`/api/auth/device/request-status?requestId=${approvalRequestId}`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
-
-        if (!res.ok || cancelled) return;
-
-        const data = await res.json();
-
-        if (data.status === 'approved' && data.deviceToken) {
-          console.log(`[ApprovalPoll] Request ${approvalRequestId} approved, saving token and redirecting`);
-          localStorage.setItem('our-story-device-token', data.deviceToken);
-          setDeviceToken(data.deviceToken);
-          setDeviceTokenStore(data.deviceToken, '', generateDeviceName());
-          setAuth(authToken);
-          useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
-          router.push('/home');
-        } else if (data.status === 'rejected') {
-          console.log(`[ApprovalPoll] Request ${approvalRequestId} rejected`);
-          setRequestRejected(true);
-        }
-      } catch {
-        // silently retry on next poll
-      }
-    };
-
-    pollStatus();
-    const interval = setInterval(pollStatus, 5000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [screen, approvalRequestId, authToken, selectedUserId]);
-
   const handleRegisterDevice = async () => {
     if (!deviceName.trim()) return;
     setLoading(true);
@@ -234,59 +188,21 @@ export default function UnlockPage() {
     }
   };
 
-  const handleRequestAccess = async () => {
+  const handleVerifyInvitation = async () => {
+    if (!invitationCode.trim()) return;
     setLoading(true);
     setError('');
 
     try {
       const info = formatDeviceInfo();
-      const res = await fetch('/api/auth/device/request', {
+      const res = await fetch('/api/auth/invitation/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          userId: selectedUserId,
-          deviceName: generateDeviceName(),
-          requestDeviceId: deviceToken,
-          platform: info.platform,
-          browser: info.browser,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        console.log(`[RequestAccess] Request created: ${data.requestId}`);
-        setApprovalRequestId(data.requestId);
-        setScreen('approval-request');
-      } else {
-        setError(data.error || 'Failed to send request');
-      }
-    } catch {
-      setError('Failed to send request');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyApprovalCode = async () => {
-    if (!approvalCode.trim()) return;
-    setLoading(true);
-    setError('');
-
-    try {
-      const info = formatDeviceInfo();
-      const res = await fetch('/api/auth/device/verify-approval', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          requestId: approvalRequestId,
-          code: approvalCode.trim(),
+          code: invitationCode.trim(),
           userId: selectedUserId,
           deviceName: generateDeviceName(),
           platform: info.platform,
@@ -305,10 +221,10 @@ export default function UnlockPage() {
         useAuthStore.getState().setActiveProfile(selectedUserId as 'me' | 'her');
         router.push('/home');
       } else {
-        setError(data.error || 'Invalid approval code');
+        setError(data.error || 'Invalid invitation code');
       }
     } catch {
-      setError('Failed to verify code');
+      setError('Failed to verify invitation code');
     } finally {
       setLoading(false);
     }
@@ -378,7 +294,7 @@ export default function UnlockPage() {
     if (e.key === 'Enter') {
       if (screen === 'lock') handleUnlock();
       else if (screen === 'register-device') handleRegisterDevice();
-      else if (screen === 'approval-code') handleVerifyApprovalCode();
+      else if (screen === 'invitation-code') handleVerifyInvitation();
       else if (screen === 'recovery-code') handleRecoveryCode();
     }
   };
@@ -536,7 +452,7 @@ export default function UnlockPage() {
               🛡️
             </motion.div>
             <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
-              Register Trusted Device
+              Register First Trusted Device
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-300">
               Save this device for future access
@@ -639,9 +555,11 @@ export default function UnlockPage() {
             <p className="text-sm text-slate-500 dark:text-slate-300 leading-relaxed">
               This device has not been approved.
               <br />
-              Only trusted devices can access
+              To protect your private memories,
               <br />
-              your private memories.
+              enter an Invitation Code generated
+              <br />
+              from one of your trusted devices.
             </p>
           </motion.div>
 
@@ -659,19 +577,52 @@ export default function UnlockPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
+            className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-6 shadow-lg shadow-sky-200/30 dark:shadow-black/20 border border-white/50 dark:border-slate-700/50 mb-6"
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1.5 ml-1">
+                  Invitation Code
+                </label>
+                <input
+                  type="text"
+                  value={invitationCode}
+                  onChange={(e) => {
+                    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (val.length > 16) val = val.slice(0, 16);
+                    if (val.length > 12) val = val.slice(0, 4) + '-' + val.slice(4, 8) + '-' + val.slice(8, 12) + '-' + val.slice(12);
+                    else if (val.length > 8) val = val.slice(0, 4) + '-' + val.slice(4, 8) + '-' + val.slice(8);
+                    else if (val.length > 4) val = val.slice(0, 4) + '-' + val.slice(4);
+                    setInvitationCode(val);
+                    setError('');
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="XXXX-XXXX-XXXX"
+                  autoFocus
+                  className="w-full bg-white/80 dark:bg-slate-700/80 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-2xl px-4 py-4 text-center text-xl font-mono font-bold tracking-wider text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 focus:border-[#2196F3]/50 transition-all uppercase"
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
             className="space-y-3"
           >
             <Button
-              onClick={handleRequestAccess}
+              onClick={handleVerifyInvitation}
               size="lg"
               className="w-full text-lg rounded-2xl"
               loading={loading}
+              disabled={invitationCode.replace(/-/g, '').length < 12}
             >
-              Request Access 🔑
+              Verify
             </Button>
 
             <Button
-              onClick={() => setScreen('recovery-option')}
+              onClick={() => setScreen('recovery-code')}
               variant="ghost"
               className="w-full rounded-2xl"
             >
@@ -685,267 +636,8 @@ export default function UnlockPage() {
                 setError('');
                 setAuthToken('');
                 setSelectedUserId('');
+                setInvitationCode('');
               }}
-              variant="ghost"
-              className="w-full rounded-2xl"
-            >
-              Cancel
-            </Button>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === 'approval-request') {
-    return (
-      <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
-        <CloudBackground />
-        <div className="relative z-10 w-full max-w-sm px-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-              className="w-20 h-20 bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] rounded-[1.5rem] mx-auto flex items-center justify-center text-4xl shadow-2xl shadow-blue-400/30 mb-5"
-            >
-              {requestRejected ? '❌' : '📨'}
-            </motion.div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
-              {requestRejected ? 'Access Request Rejected' : 'Request Sent'}
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-300 leading-relaxed">
-              {requestRejected
-                ? 'Your access request was denied by a trusted device.'
-                : 'Waiting for approval from an existing trusted device.'}
-            </p>
-          </motion.div>
-
-          {!requestRejected && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-6 shadow-lg mb-6"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse" />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Checking for approval...
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                This device will automatically be approved when a trusted device grants access.
-              </p>
-            </motion.div>
-          )}
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-3"
-          >
-            {requestRejected ? (
-              <Button
-                onClick={() => {
-                  setScreen('lock');
-                  setPassword('');
-                  setError('');
-                  setAuthToken('');
-                  setSelectedUserId('');
-                  setRequestRejected(false);
-                }}
-                size="lg"
-                className="w-full text-lg rounded-2xl"
-              >
-                Back to Login
-              </Button>
-            ) : (
-              <Button
-                onClick={() => {
-                  setScreen('lock');
-                  setPassword('');
-                  setError('');
-                  setAuthToken('');
-                  setSelectedUserId('');
-                  setRequestRejected(false);
-                }}
-                variant="ghost"
-                className="w-full rounded-2xl"
-              >
-                Cancel
-              </Button>
-            )}
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === 'approval-code') {
-    return (
-      <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
-        <CloudBackground />
-        <div className="relative z-10 w-full max-w-sm px-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-              className="w-20 h-20 bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] rounded-[1.5rem] mx-auto flex items-center justify-center text-4xl shadow-2xl shadow-blue-400/30 mb-5"
-            >
-              🔢
-            </motion.div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
-              Enter Approval Code
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-300">
-              Enter the 6-digit code from your trusted device
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-6 shadow-lg shadow-sky-200/30 dark:shadow-black/20 border border-white/50 dark:border-slate-700/50 mb-6"
-          >
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1.5 ml-1">
-                  Approval Code
-                </label>
-                <input
-                  type="text"
-                  value={approvalCode}
-                  onChange={(e) => {
-                    setApprovalCode(e.target.value.replace(/\D/g, '').slice(0, 6));
-                    setError('');
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder="000000"
-                  autoFocus
-                  maxLength={6}
-                  className="w-full bg-white/80 dark:bg-slate-700/80 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-2xl px-4 py-4 text-center text-2xl font-mono font-bold tracking-[0.5em] text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30 focus:border-[#2196F3]/50 transition-all"
-                />
-              </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
-                Valid for 5 minutes
-              </p>
-            </div>
-          </motion.div>
-
-          {error && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-red-500 text-sm text-center mb-4 font-medium"
-            >
-              {error}
-            </motion.p>
-          )}
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-3"
-          >
-            <Button
-              onClick={handleVerifyApprovalCode}
-              size="lg"
-              className="w-full text-lg rounded-2xl"
-              loading={loading}
-              disabled={approvalCode.length !== 6}
-            >
-              Verify Code ✅
-            </Button>
-
-            <Button
-              onClick={() => setScreen('approval-request')}
-              variant="ghost"
-              className="w-full rounded-2xl"
-            >
-              Back
-            </Button>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === 'recovery-option') {
-    return (
-      <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#B3E5FC] via-[#E1F5FE] to-[#EAF6FF] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
-        <CloudBackground />
-        <div className="relative z-10 w-full max-w-sm px-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-              className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-[1.5rem] mx-auto flex items-center justify-center text-4xl shadow-2xl shadow-amber-400/30 mb-5"
-            >
-              🆘
-            </motion.div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
-              Lost Access?
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-300 leading-relaxed">
-              Use your recovery code to regain access.
-              <br />
-              This will remove all other trusted devices.
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-amber-50 dark:bg-amber-900/20 rounded-3xl p-5 shadow-lg border border-amber-200/50 dark:border-amber-700/30 mb-6"
-          >
-            <div className="flex items-start gap-3">
-              <span className="text-xl">⚠️</span>
-              <div>
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
-                  Important
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-                  Using a recovery code will immediately remove access from all other devices. Only use this if you&apos;ve lost access to all trusted devices.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-3"
-          >
-            <Button
-              onClick={() => setScreen('recovery-code')}
-              size="lg"
-              className="w-full text-lg rounded-2xl"
-            >
-              Use Recovery Code 🔑
-            </Button>
-
-            <Button
-              onClick={() => setScreen('untrusted-device')}
               variant="ghost"
               className="w-full rounded-2xl"
             >
@@ -1041,7 +733,11 @@ export default function UnlockPage() {
             </Button>
 
             <Button
-              onClick={() => setScreen('recovery-option')}
+              onClick={() => {
+                setScreen('untrusted-device');
+                setRecoveryCodeInput('');
+                setError('');
+              }}
               variant="ghost"
               className="w-full rounded-2xl"
             >
