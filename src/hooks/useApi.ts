@@ -12,9 +12,6 @@ api.interceptors.request.use((config) => {
     if (state?.token) {
       config.headers.Authorization = `Bearer ${state.token}`;
     }
-    if (state?.deviceToken) {
-      config.headers['X-Device-Token'] = state.deviceToken;
-    }
   }
   return config;
 });

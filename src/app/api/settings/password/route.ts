@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
-import { AppSettings, SecurityLog } from '@/models';
-import { hashPassword, verifyPassword, VAULT_ID } from '@/lib/auth';
+import { AppSettings } from '@/models';
+import { hashPassword, verifyPassword } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,12 +51,6 @@ export async function PUT(request: NextRequest) {
 
     settings.passwordHash = await hashPassword(newPassword);
     await settings.save();
-
-    await SecurityLog.create({
-      vaultId: VAULT_ID,
-      event: 'password_changed',
-      description: 'Password changed successfully',
-    });
 
     return NextResponse.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {

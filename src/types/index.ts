@@ -151,65 +151,8 @@ export interface StoryBook {
   updatedAt: string;
 }
 
-export interface TrustedDevice {
-  _id: string;
-  vaultId: string;
-  deviceName: string;
-  deviceTokenHash: string;
-  platform: string;
-  browser: string;
-  owner: string;
-  addedBy: string;
-  isTrusted: boolean;
-  lastActive: string;
-  registeredAt: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface InvitationCode {
-  _id: string;
-  vaultId: string;
-  code: string;
-  codeHash: string;
-  createdBy: string;
-  createdDevice: string;
-  generatedAt: string;
-  expiresAt: string;
-  isUsed: boolean;
-  usedAt?: string;
-  usedByDevice?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SecurityLog {
-  _id: string;
-  vaultId: string;
-  event: string;
-  description: string;
-  deviceName?: string;
-  ipAddress?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface RecoveryCode {
-  _id: string;
-  vaultId: string;
-  codeHash: string;
-  isUsed: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export type AuthScreen =
   | 'splash'
   | 'lock'
   | 'profile'
-  | 'device-check'
-  | 'register-device'
-  | 'untrusted-device'
-  | 'invitation-code'
-  | 'recovery-code'
   | 'done';
