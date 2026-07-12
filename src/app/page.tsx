@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
@@ -21,12 +21,22 @@ const stagger = {
   show: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 export default function UnlockPage() {
   const [screen, setScreen] = useState<Screen>('splash');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [authToken, setAuthToken] = useState('');
+
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -42,8 +52,40 @@ export default function UnlockPage() {
     return () => clearTimeout(splashTimer);
   }, []);
 
+  const startLockout = useCallback((seconds: number) => {
+    setIsLocked(true);
+    setLockoutRemaining(seconds);
+    setError('');
+  }, []);
+
+  useEffect(() => {
+    if (!isLocked || lockoutRemaining <= 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (isLocked && lockoutRemaining <= 0) {
+        setIsLocked(false);
+        setLockoutRemaining(0);
+      }
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setLockoutRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          setIsLocked(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isLocked, lockoutRemaining]);
+
   const handleUnlock = async () => {
-    if (!password.trim()) return;
+    if (!password.trim() || isLocked) return;
     setLoading(true);
     setError('');
 
@@ -58,9 +100,17 @@ export default function UnlockPage() {
 
       if (res.ok && data.token) {
         setAuthToken(data.token);
+        setIsLocked(false);
+        setLockoutRemaining(0);
+        if (timerRef.current) clearInterval(timerRef.current);
         goToProfileOrHome(data.token);
+      } else if (data.locked && data.retryAfter) {
+        startLockout(data.retryAfter);
       } else if (res.status === 401) {
-        setError('Incorrect Password');
+        setError('Incorrect vault password. Please try again.');
+      } else if (res.status === 429) {
+        if (data.retryAfter) startLockout(data.retryAfter);
+        else setError('Too many failed attempts. Please wait before trying again.');
       } else {
         setError(data.error || 'Something went wrong. Please try again.');
       }
@@ -88,7 +138,7 @@ export default function UnlockPage() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && screen === 'lock') handleUnlock();
+    if (e.key === 'Enter' && screen === 'lock' && !isLocked) handleUnlock();
   };
 
   if (screen === 'splash') {
@@ -146,17 +196,59 @@ export default function UnlockPage() {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="w-full space-y-4"
           >
-            <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-1 shadow-lg shadow-sky-200/30 dark:shadow-black/20 border border-white/50 dark:border-slate-700/50">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter secret password..."
-                autoFocus
-                className="w-full bg-transparent px-5 py-4 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none text-base font-medium"
-              />
-            </div>
+            {isLocked && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.4, type: 'spring' }}
+                className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-6 shadow-lg shadow-red-200/30 dark:shadow-red-900/20 border border-red-200/50 dark:border-red-800/30"
+              >
+                <div className="text-center space-y-4">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                    className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-3xl shadow-xl shadow-red-400/30"
+                  >
+                    🔒
+                  </motion.div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">
+                      Too Many Failed Attempts
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                      For your security, password entry has been temporarily disabled.
+                    </p>
+                  </div>
+                  <div className="bg-white/80 dark:bg-slate-900/60 rounded-2xl px-6 py-4 border border-slate-100 dark:border-slate-700/50">
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mb-1 font-medium">Please wait</p>
+                    <motion.p
+                      key={lockoutRemaining}
+                      initial={{ scale: 1.1 }}
+                      animate={{ scale: 1 }}
+                      className="text-3xl font-black text-gradient tabular-nums"
+                    >
+                      {formatTime(lockoutRemaining)}
+                    </motion.p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {!isLocked && (
+              <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl p-1 shadow-lg shadow-sky-200/30 dark:shadow-black/20 border border-white/50 dark:border-slate-700/50">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter secret password..."
+                  autoFocus
+                  disabled={isLocked}
+                  className="w-full bg-transparent px-5 py-4 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+            )}
 
             <motion.div
               animate={error ? { x: [0, -10, 10, -10, 10, 0] } : {}}
@@ -167,14 +259,16 @@ export default function UnlockPage() {
               )}
             </motion.div>
 
-            <Button
-              onClick={handleUnlock}
-              size="lg"
-              className="w-full text-lg rounded-2xl"
-              loading={loading}
-            >
-              Unlock ❤️
-            </Button>
+            {!isLocked && (
+              <Button
+                onClick={handleUnlock}
+                size="lg"
+                className="w-full text-lg rounded-2xl"
+                loading={loading}
+              >
+                Unlock ❤️
+              </Button>
+            )}
 
             <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
               A private space for two hearts

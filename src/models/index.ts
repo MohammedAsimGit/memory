@@ -217,6 +217,9 @@ export interface ISettings extends Document {
   partnerName1: string;
   partnerName2: string;
   relationshipStartDate: string;
+  failedLoginAttempts: number;
+  lastFailedLoginAt: Date | null;
+  lockoutUntil: Date | null;
 }
 
 const SettingsSchema = new Schema<ISettings>(
@@ -227,6 +230,9 @@ const SettingsSchema = new Schema<ISettings>(
     partnerName1: { type: String, default: 'My Love' },
     partnerName2: { type: String, default: 'My Love' },
     relationshipStartDate: { type: String, default: '' },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lastFailedLoginAt: { type: Date, default: null },
+    lockoutUntil: { type: Date, default: null },
   },
   { timestamps: true }
 );
