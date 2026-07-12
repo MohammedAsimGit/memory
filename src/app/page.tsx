@@ -42,6 +42,7 @@ export default function UnlockPage() {
   const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
   const [deviceIsTrusted, setDeviceIsTrusted] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
+  const [verifyResponse, setVerifyResponse] = useState<{ status: number; body: unknown } | null>(null);
 
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -216,6 +217,7 @@ export default function UnlockPage() {
     if (!invitationCode.trim()) return;
     setLoading(true);
     setError('');
+    setVerifyResponse(null);
 
     try {
       const info = formatDeviceInfo();
@@ -234,6 +236,7 @@ export default function UnlockPage() {
       });
 
       const data = await res.json();
+      setVerifyResponse({ status: res.status, body: data });
 
       if (res.ok) {
         const serverToken = data.deviceToken as string;
@@ -735,6 +738,17 @@ export default function UnlockPage() {
                       <span className="text-slate-500">{key}:</span> {String(val)}
                     </div>
                   ))}
+                  {verifyResponse && (
+                    <div className="mt-2 pt-2 border-t border-slate-700/50">
+                      <div><span className="text-slate-500">HTTP Status:</span> {verifyResponse.status}</div>
+                      <div className="mt-1">
+                        <span className="text-slate-500">Backend Response:</span>
+                      </div>
+                      <pre className="text-[10px] text-green-300 whitespace-pre-wrap break-all bg-black/30 rounded-lg p-2 mt-1">
+                        {JSON.stringify(verifyResponse.body, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
