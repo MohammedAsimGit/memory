@@ -83,18 +83,11 @@ export function useSocket() {
       updateMessage(message._id, message);
     });
 
-    socket.on('messageDeleted', (data: { messageId: string; deletedFor: string; sender?: string }) => {
-      console.log(`[DELETE] STEP 5: RECEIVED messageDeleted`);
-      console.log(`[DELETE]   messageId: ${data.messageId}`);
-      console.log(`[DELETE]   deletedFor: ${data.deletedFor}`);
-      console.log(`[DELETE]   sender: ${data.sender || 'unknown'}`);
-      console.log(`[DELETE]   mySender: ${mySender}`);
+    socket.on('messageDeleted', (data: { messageId: string; deletedFor: string }) => {
       if (data.deletedFor === 'both') {
         removeMessage(data.messageId);
-        console.log(`[DELETE]   action: removed from state`);
       } else {
         updateMessage(data.messageId, { isDeleted: true });
-        console.log(`[DELETE]   action: marked as deleted`);
       }
     });
 
@@ -331,13 +324,6 @@ export function useSocket() {
     if (deleteFor === 'both') removeMessage(messageId);
     else updateMessage(messageId, { isDeleted: true });
 
-    console.log(`[DELETE] Client sending deleteMessage`);
-    console.log(`[DELETE]   messageId: ${messageId}`);
-    console.log(`[DELETE]   deleteFor: ${deleteFor}`);
-    console.log(`[DELETE]   socket.connected: ${socket.connected}`);
-    console.log(`[DELETE]   socket.id: ${socket.id}`);
-    console.log(`[DELETE]   mySender: ${mySender}`);
-
     try {
       if (socket.connected) {
         socket.emit('deleteMessage', {
@@ -346,9 +332,7 @@ export function useSocket() {
           sender: mySender,
           deleteFor,
         });
-        console.log(`[DELETE]   emitted via socket ✓`);
       } else {
-        console.log(`[DELETE]   socket NOT connected, using HTTP fallback`);
         await fetch(`/api/chat/${messageId}?deleteFor=${deleteFor}`, { method: 'DELETE' });
       }
     } catch {
