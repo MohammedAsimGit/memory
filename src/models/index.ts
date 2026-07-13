@@ -270,4 +270,77 @@ StoryBookSchema.index({ year: 1, createdAt: -1 });
 export const StoryBook: Model<IStoryBook> =
   mongoose.models.StoryBook || mongoose.model<IStoryBook>('StoryBook', StoryBookSchema);
 
+export interface IChatMessage extends Document {
+  conversationId: string;
+  sender: 'me' | 'her';
+  content: string;
+  type: 'text' | 'image' | 'video' | 'voice' | 'document' | 'emoji';
+  replyTo?: string;
+  reactions: { sender: string; emoji: string }[];
+  isEdited: boolean;
+  isDeleted: boolean;
+  deletedFor: string[];
+  seen: boolean;
+  delivered: boolean;
+  pinned: boolean;
+  favorited: boolean;
+  attachments: { url: string; type: string; name?: string; size?: number; duration?: number; thumbnail?: string }[];
+}
+
+const ChatMessageSchema = new Schema<IChatMessage>(
+  {
+    conversationId: { type: String, required: true, default: 'main' },
+    sender: { type: String, required: true, enum: ['me', 'her'] },
+    content: { type: String, default: '' },
+    type: { type: String, enum: ['text', 'image', 'video', 'voice', 'document', 'emoji'], default: 'text' },
+    replyTo: { type: String },
+    reactions: [{ sender: String, emoji: String }],
+    isEdited: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
+    deletedFor: [{ type: String }],
+    seen: { type: Boolean, default: false },
+    delivered: { type: Boolean, default: false },
+    pinned: { type: Boolean, default: false },
+    favorited: { type: Boolean, default: false },
+    attachments: [{
+      url: String,
+      type: String,
+      name: String,
+      size: Number,
+      duration: Number,
+      thumbnail: String,
+    }],
+  },
+  { timestamps: true }
+);
+
+ChatMessageSchema.index({ conversationId: 1, createdAt: -1 });
+ChatMessageSchema.index({ conversationId: 1, sender: 1 });
+ChatMessageSchema.index({ content: 'text' });
+
+export const ChatMessage: Model<IChatMessage> =
+  mongoose.models.ChatMessage || mongoose.model<IChatMessage>('ChatMessage', ChatMessageSchema);
+
+export interface IChatTyping extends Document {
+  conversationId: string;
+  sender: 'me' | 'her';
+  isTyping: boolean;
+  lastTyped: Date;
+}
+
+const ChatTypingSchema = new Schema<IChatTyping>(
+  {
+    conversationId: { type: String, required: true, default: 'main' },
+    sender: { type: String, required: true, enum: ['me', 'her'] },
+    isTyping: { type: Boolean, default: false },
+    lastTyped: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
+ChatTypingSchema.index({ conversationId: 1, sender: 1 }, { unique: true });
+
+export const ChatTyping: Model<IChatTyping> =
+  mongoose.models.ChatTyping || mongoose.model<IChatTyping>('ChatTyping', ChatTypingSchema);
+
 

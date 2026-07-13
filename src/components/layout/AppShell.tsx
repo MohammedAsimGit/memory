@@ -70,6 +70,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     children
   );
 
+  if (isChat) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-slate-950">
+        {content}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#EAF6FF] dark:from-slate-900 via-[#EAF6FF]/70 dark:via-slate-900/70 to-white dark:to-slate-950 relative">
       <CloudBackground />

@@ -1,0 +1,77 @@
+'use client';
+
+import { motion, AnimatePresence } from 'framer-motion';
+import { useChatStore } from '@/stores/chat';
+import { useAuthStore } from '@/stores/auth';
+import type { ChatMessage } from '@/types/chat';
+
+interface LongPressMenuProps {
+  message: ChatMessage;
+  isOwn: boolean;
+  onReply: () => void;
+  onCopy: () => void;
+  onEdit: () => void;
+  onDelete: (deleteFor: 'me' | 'both') => void;
+  onFavorite: () => void;
+  onPin: () => void;
+  onClose: () => void;
+}
+
+export default function LongPressMenu({ message, isOwn, onReply, onCopy, onEdit, onDelete, onFavorite, onPin, onClose }: LongPressMenuProps) {
+  const { showMenu, selectedMessage } = useChatStore();
+  const activeProfile = useAuthStore((s) => s.activeProfile);
+
+  if (!showMenu || selectedMessage?._id !== message._id) return null;
+
+  const canEdit = isOwn && !message.isDeleted;
+  const editTimeLimit = 15 * 60 * 1000;
+  const isWithinEditTime = canEdit && (Date.now() - new Date(message.createdAt).getTime()) < editTimeLimit;
+
+  const menuItems = [
+    { icon: '↩️', label: 'Reply', action: onReply },
+    { icon: '📋', label: 'Copy', action: onCopy },
+    ...(isWithinEditTime ? [{ icon: '✏️', label: 'Edit', action: onEdit }] : []),
+    ...(isOwn ? [{ icon: '🗑️', label: 'Delete for Me', action: () => onDelete('me') }] : []),
+    ...(isOwn ? [{ icon: '🗑️', label: 'Delete for Both', action: () => onDelete('both') }] : []),
+    { icon: message.favorited ? '💛' : '🤍', label: message.favorited ? 'Unfavorite' : 'Favorite', action: onFavorite },
+    { icon: message.pinned ? '📌' : '📍', label: message.pinned ? 'Unpin' : 'Pin', action: onPin },
+  ];
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.85, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.85, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        className={`fixed z-50 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden ${
+          isOwn ? 'right-4' : 'left-4'
+        }`}
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      >
+        <div className="p-1.5">
+          {menuItems.map((item, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                item.action();
+                onClose();
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+            >
+              <span className="text-[15px]">{item.icon}</span>
+              <span className="text-[14px] text-slate-700 dark:text-slate-200">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </motion.div>
+    </>
+  );
+}

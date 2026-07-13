@@ -1,183 +1,285 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/auth';
+import { useChatStore } from '@/stores/chat';
+import { useSocket } from '@/hooks/useSocket';
 import { useApi } from '@/hooks/useApi';
 import type { Settings } from '@/types';
-
-interface ChatMessage {
-  _id: string;
-  content: string;
-  author: string;
-  timestamp: string;
-  mood?: string;
-}
-
-const moodEmojis: Record<string, string> = {
-  love: '❤️',
-  happy: '😊',
-  excited: '🎉',
-  grateful: '🙏',
-  thinking: '🤔',
-  missing: '💭',
-};
+import type { ChatMessage } from '@/types/chat';
+import ChatTopBar from '@/components/chat/ChatTopBar';
+import MessageBubble from '@/components/chat/MessageBubble';
+import ChatInput from '@/components/chat/ChatInput';
+import TypingIndicator from '@/components/chat/TypingIndicator';
+import LongPressMenu from '@/components/chat/LongPressMenu';
+import DateSeparator from '@/components/chat/DateSeparator';
+import SearchMessages from '@/components/chat/SearchMessages';
+import ImageViewer from '@/components/chat/ImageViewer';
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [selectedMood, setSelectedMood] = useState<string>('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const activeProfile = useAuthStore((s) => s.activeProfile);
   const { data: settings } = useApi<Settings>('/settings');
+  const {
+    messages,
+    setMessages,
+    isLoading,
+    setIsLoading,
+    partnerTyping,
+    showSearch,
+    setShowSearch,
+    showMenu,
+    setShowMenu,
+    selectedMessage,
+    setSelectedMessage,
+    openImageViewer,
+  } = useChatStore();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const { sendMessage, startTyping, stopTyping, markSeen, sendReaction, editMessage, deleteMessage } = useSocket();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const oldestDateRef = useRef<string | null>(null);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' });
+  }, []);
+
+  const fetchMessages = useCallback(async (before?: string) => {
+    try {
+      const url = before
+        ? `/api/chat?limit=30&before=${before}`
+        : '/api/chat?limit=30';
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.length < 30) setHasMore(false);
+
+      if (before) {
+        setMessages([...data, ...messages]);
+      } else {
+        setMessages(data);
+        if (data.length > 0) {
+          oldestDateRef.current = data[0].createdAt;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch messages:', err);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [messages, setMessages]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    fetchMessages();
+  }, []);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-
-    const newMessage: ChatMessage = {
-      _id: Date.now().toString(),
-      content: input.trim(),
-      author: activeProfile || 'me',
-      timestamp: new Date().toISOString(),
-      mood: selectedMood || undefined,
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-    setInput('');
-    setSelectedMood('');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  useEffect(() => {
+    if (!isLoading && messages.length > 0) {
+      setTimeout(() => scrollToBottom(false), 100);
     }
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.sender !== (activeProfile || 'me')) {
+        markSeen(lastMsg._id);
+      }
+    }
+  }, [messages, activeProfile, markSeen]);
+
+  const handleLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore || !oldestDateRef.current) return;
+    setIsLoadingMore(true);
+    fetchMessages(oldestDateRef.current);
+  }, [isLoadingMore, hasMore, fetchMessages]);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (container.scrollTop < 100 && hasMore && !isLoadingMore) {
+      handleLoadMore();
+    }
+  }, [hasMore, isLoadingMore, handleLoadMore]);
+
+  const handleSend = useCallback((data: { content: string; type?: string; replyTo?: string; attachments?: any[] }) => {
+    sendMessage(data);
+  }, [sendMessage]);
+
+  const handleLongPress = useCallback((msg: ChatMessage) => {
+    setSelectedMessage(msg);
+    setShowMenu(true);
+  }, [setSelectedMessage, setShowMenu]);
+
+  const handleDoubleTap = useCallback((msg: ChatMessage) => {
+    sendReaction(msg._id, '❤️');
+  }, [sendReaction]);
+
+  const handleCopy = useCallback(() => {
+    if (selectedMessage) {
+      navigator.clipboard.writeText(selectedMessage.content);
+      setShowMenu(false);
+    }
+  }, [selectedMessage, setShowMenu]);
+
+  const handleReply = useCallback(() => {
+    if (selectedMessage) {
+      useChatStore.getState().setReplyingTo(selectedMessage);
+      setShowMenu(false);
+    }
+  }, [selectedMessage, setShowMenu]);
+
+  const handleEdit = useCallback(() => {
+    if (selectedMessage) {
+      useChatStore.getState().setEditingMessage(selectedMessage);
+      setShowMenu(false);
+    }
+  }, [selectedMessage, setShowMenu]);
+
+  const handleDelete = useCallback((deleteFor: 'me' | 'both') => {
+    if (selectedMessage) {
+      deleteMessage(selectedMessage._id, deleteFor);
+      setShowMenu(false);
+    }
+  }, [selectedMessage, deleteMessage, setShowMenu]);
+
+  const handleFavorite = useCallback(() => {
+    if (selectedMessage) {
+      const chat = useChatStore.getState();
+      chat.updateMessage(selectedMessage._id, { favorited: !selectedMessage.favorited });
+      setShowMenu(false);
+    }
+  }, [selectedMessage, setShowMenu]);
+
+  const handlePin = useCallback(() => {
+    if (selectedMessage) {
+      const chat = useChatStore.getState();
+      chat.updateMessage(selectedMessage._id, { pinned: !selectedMessage.pinned });
+      setShowMenu(false);
+    }
+  }, [selectedMessage, setShowMenu]);
+
+  const shouldShowDate = (msg: ChatMessage, prevMsg?: ChatMessage) => {
+    if (!prevMsg) return true;
+    const d1 = new Date(msg.createdAt).toDateString();
+    const d2 = new Date(prevMsg.createdAt).toDateString();
+    return d1 !== d2;
   };
 
-  const partnerName = activeProfile === 'me'
-    ? settings?.partnerName2 || 'My Love'
-    : settings?.partnerName1 || 'Partner';
+  const shouldShowTail = (msg: ChatMessage, prevMsg?: ChatMessage) => {
+    if (!prevMsg) return true;
+    return prevMsg.sender !== msg.sender || shouldShowDate(msg, prevMsg);
+  };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="mb-4"
+    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col">
+      <ChatTopBar
+        onBack={() => router.push('/home')}
+        onSearch={() => setShowSearch(!showSearch)}
+      />
+
+      <div
+        className="flex-1 overflow-y-auto scrollbar-thin"
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}
       >
-        <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-          Our Chat
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          A private space for us 💕
-        </p>
-      </motion.div>
+        <div className="px-4 py-2 max-w-2xl mx-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-bounce"
+                    style={{ animationDelay: `${i * 150}ms` }}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <div className="text-5xl mb-4">💌</div>
+              <h2 className="text-xl font-bold text-slate-700 dark:text-slate-200 mb-2">
+                Start a Conversation
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
+                Send a sweet message. Every word becomes a cherished memory.
+              </p>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg, i) => {
+                const isOwn = msg.sender === (activeProfile || 'me');
+                const prevMsg = i > 0 ? messages[i - 1] : undefined;
+                const showDate = shouldShowDate(msg, prevMsg);
+                const showTail = shouldShowTail(msg, prevMsg);
 
-      <div className="flex-1 overflow-y-auto space-y-3 pb-4 scrollbar-thin">
-        {messages.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="flex flex-col items-center justify-center h-full text-center"
-          >
-            <div className="text-6xl mb-4">💌</div>
-            <h2 className="text-xl font-bold text-slate-700 dark:text-slate-200 mb-2">
-              Start a Conversation
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 max-w-xs">
-              Send a sweet message to {partnerName}. Every word becomes a cherished memory.
-            </p>
-          </motion.div>
-        ) : (
-          <AnimatePresence>
-            {messages.map((msg, i) => (
-              <motion.div
-                key={msg._id}
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3, delay: i * 0.05 }}
-                className={`flex ${msg.author === activeProfile ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                    msg.author === activeProfile
-                      ? 'bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] text-white rounded-br-md'
-                      : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-md rounded-bl-md'
-                  }`}
-                >
-                  {msg.mood && (
-                    <span className="text-lg mb-1 block">{moodEmojis[msg.mood]}</span>
-                  )}
-                  <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                  <p className={`text-[10px] mt-1 ${msg.author === activeProfile ? 'text-white/70' : 'text-slate-400'}`}>
-                    {new Date(msg.timestamp).toLocaleTimeString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                return (
+                  <div key={msg._id}>
+                    {showDate && <DateSeparator date={msg.createdAt} />}
+                    <MessageBubble
+                      message={msg}
+                      isOwn={isOwn}
+                      showTail={showTail}
+                      onLongPress={handleLongPress}
+                      onDoubleTap={handleDoubleTap}
+                      onImagePress={(images, idx) => openImageViewer(images, idx)}
+                    />
+                  </div>
+                );
+              })}
+              <TypingIndicator isTyping={partnerTyping} />
+            </>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      <ChatInput
+        onSend={handleSend}
+        onTyping={startTyping}
+        onStopTyping={stopTyping}
+      />
+
+      <AnimatePresence>
+        {showMenu && selectedMessage && (
+          <LongPressMenu
+            message={selectedMessage}
+            isOwn={selectedMessage.sender === (activeProfile || 'me')}
+            onReply={handleReply}
+            onCopy={handleCopy}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onFavorite={handleFavorite}
+            onPin={handlePin}
+            onClose={() => {
+              setShowMenu(false);
+              setSelectedMessage(null);
+            }}
+          />
         )}
-        <div ref={messagesEndRef} />
-      </div>
+      </AnimatePresence>
 
-      <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
-        <div className="flex gap-2 mb-2 overflow-x-auto pb-1 scrollbar-none">
-          {Object.entries(moodEmojis).map(([mood, emoji]) => (
-            <button
-              key={mood}
-              onClick={() => setSelectedMood(selectedMood === mood ? '' : mood)}
-              className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all ${
-                selectedMood === mood
-                  ? 'bg-blue-100 dark:bg-blue-900/50 scale-110 ring-2 ring-blue-400'
-                  : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-              title={mood}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
+      <AnimatePresence>
+        {showSearch && (
+          <SearchMessages
+            messages={messages}
+            onClose={() => setShowSearch(false)}
+            onJumpTo={(id) => {
+              const el = document.getElementById(id);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+          />
+        )}
+      </AnimatePresence>
 
-        <div className="flex items-end gap-2">
-          <div className="flex-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={`Say something sweet to ${partnerName}...`}
-              rows={1}
-              className="w-full px-4 py-3 text-[15px] text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 bg-transparent resize-none outline-none max-h-24 scrollbar-none"
-              style={{ minHeight: '44px' }}
-            />
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={handleSend}
-            disabled={!input.trim()}
-            className="flex-shrink-0 w-11 h-11 rounded-full bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] flex items-center justify-center shadow-lg shadow-blue-400/30 disabled:opacity-40 disabled:shadow-none transition-opacity"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </motion.button>
-        </div>
-      </div>
+      <ImageViewer />
     </div>
   );
 }
