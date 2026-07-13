@@ -49,6 +49,28 @@ export default function ChatPage() {
   const oldestDateRef = useRef<string | null>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    const setVH = () => {
+      const vh = window.visualViewport?.height || window.innerHeight;
+      container.style.height = `${vh}px`;
+    };
+
+    setVH();
+    window.visualViewport?.addEventListener('resize', setVH);
+    window.visualViewport?.addEventListener('scroll', setVH);
+    window.addEventListener('resize', setVH);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', setVH);
+      window.visualViewport?.removeEventListener('scroll', setVH);
+      window.removeEventListener('resize', setVH);
+    };
+  }, []);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -215,9 +237,11 @@ export default function ChatPage() {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-white dark:bg-[#090909] flex flex-col"
+      ref={chatContainerRef}
+      className="fixed inset-0 z-50 bg-white dark:bg-[#090909] flex flex-col overflow-hidden"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      style={{ height: '100dvh' }}
     >
       <ChatTopBar
         onBack={() => router.push('/home')}
@@ -230,9 +254,6 @@ export default function ChatPage() {
         className="flex-1 overflow-y-auto bg-gradient-to-b from-[#F0F5FA] to-white dark:from-[#0a0a0a] dark:to-[#090909]"
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        style={{
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 60px)',
-        }}
       >
         <div
           className="px-3 py-3 max-w-2xl mx-auto"
