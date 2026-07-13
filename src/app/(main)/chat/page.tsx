@@ -227,26 +227,15 @@ export default function ChatPage() {
       />
 
       <div
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto bg-gradient-to-b from-[#F0F5FA] to-white dark:from-[#0a0a0a] dark:to-[#090909]"
         ref={scrollContainerRef}
         onScroll={handleScroll}
         style={{
           paddingTop: 'calc(env(safe-area-inset-top, 0px) + 60px)',
-          background: 'linear-gradient(180deg, rgba(240,245,250,1) 0%, rgba(255,255,255,1) 100%)',
         }}
       >
-        <style>{`
-          @media (prefers-color-scheme: dark) {
-            .chat-scroll-area {
-              background: linear-gradient(180deg, #0a0a0a 0%, #090909 100%) !important;
-            }
-          }
-        `}</style>
         <div
-          className="chat-scroll-area px-3 py-3 max-w-2xl mx-auto"
-          style={{
-            background: 'inherit',
-          }}
+          className="px-3 py-3 max-w-2xl mx-auto"
         >
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
