@@ -40,7 +40,7 @@ export default function ChatPage() {
     openImageViewer,
   } = useChatStore();
 
-  const { sendMessage, startTyping, stopTyping, markSeen, sendReaction, editMessage, deleteMessage, isConnected } = useSocket();
+  const { sendMessage, startTyping, stopTyping, markSeen, sendReaction, editMessage, deleteMessage, isConnected, connectionMode } = useSocket();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
@@ -204,6 +204,7 @@ export default function ChatPage() {
         onBack={() => router.push('/home')}
         onSearch={() => setShowSearch(!showSearch)}
         isConnected={isConnected}
+        connectionMode={connectionMode}
       />
 
       <div

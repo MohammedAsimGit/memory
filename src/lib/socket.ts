@@ -3,72 +3,79 @@
 import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
-let connectionListeners: ((connected: boolean) => void)[] = [];
+let connectionState: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
+let stateListeners: ((state: string) => void)[] = [];
+
+function setState(s: string) {
+  connectionState = s as any;
+  stateListeners.forEach((fn) => fn(s));
+}
 
 export function getSocket(): Socket {
   if (!socket) {
-    socket = io(typeof window !== 'undefined' ? window.location.origin : '', {
+    const url = typeof window !== 'undefined' ? window.location.origin : '';
+    console.log('[Socket] Creating socket to:', url);
+
+    socket = io(url, {
       path: '/api/socketio',
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       autoConnect: false,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      timeout: 20000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000,
+      forceNew: false,
     });
 
     socket.on('connect', () => {
-      console.log('[Socket] Connected:', socket?.id);
-      connectionListeners.forEach((fn) => fn(true));
+      console.log('[Socket] ✓ Connected, id:', socket?.id);
+      setState('connected');
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('[Socket] Disconnected:', reason);
-      connectionListeners.forEach((fn) => fn(false));
+      console.log('[Socket] ✗ Disconnected:', reason);
+      setState('disconnected');
     });
 
     socket.on('connect_error', (err) => {
-      console.log('[Socket] Connection error:', err.message);
-      connectionListeners.forEach((fn) => fn(false));
+      console.log('[Socket] ✗ Error:', err.message);
+      setState('disconnected');
     });
 
     socket.on('reconnect', (attempt) => {
-      console.log('[Socket] Reconnected after', attempt, 'attempts');
-      connectionListeners.forEach((fn) => fn(true));
+      console.log('[Socket] ✓ Reconnected after', attempt, 'attempts');
+      setState('connected');
     });
 
     socket.on('reconnect_attempt', (attempt) => {
-      console.log('[Socket] Reconnect attempt:', attempt);
+      console.log('[Socket] Reconnecting... attempt', attempt);
+      setState('connecting');
     });
 
     socket.on('reconnect_error', (err) => {
       console.log('[Socket] Reconnect error:', err.message);
     });
-
-    socket.on('reconnect_failed', () => {
-      console.log('[Socket] Reconnect failed');
-      connectionListeners.forEach((fn) => fn(false));
-    });
   }
   return socket;
 }
 
-export function onSocketConnectionChange(fn: (connected: boolean) => void) {
-  connectionListeners.push(fn);
-  return () => {
-    connectionListeners = connectionListeners.filter((f) => f !== fn);
-  };
+export function getConnectionState(): string {
+  return connectionState;
 }
 
-export function isSocketConnected(): boolean {
-  return socket?.connected ?? false;
+export function onConnectionStateChange(fn: (state: string) => void) {
+  stateListeners.push(fn);
+  return () => {
+    stateListeners = stateListeners.filter((f) => f !== fn);
+  };
 }
 
 export function disconnectSocket() {
   if (socket) {
     socket.disconnect();
     socket = null;
-    connectionListeners = [];
+    connectionState = 'disconnected';
+    stateListeners = [];
   }
 }

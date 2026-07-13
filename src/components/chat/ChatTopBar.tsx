@@ -10,9 +10,10 @@ interface ChatTopBarProps {
   onBack: () => void;
   onSearch: () => void;
   isConnected: boolean;
+  connectionMode?: string;
 }
 
-export default function ChatTopBar({ onBack, onSearch, isConnected }: ChatTopBarProps) {
+export default function ChatTopBar({ onBack, onSearch, isConnected, connectionMode }: ChatTopBarProps) {
   const { isPartnerOnline, partnerLastSeen, partnerTyping } = useChatStore();
   const activeProfile = useAuthStore((s) => s.activeProfile);
   const { data: settings } = useApi<Settings>('/settings');
@@ -22,7 +23,7 @@ export default function ChatTopBar({ onBack, onSearch, isConnected }: ChatTopBar
     : settings?.partnerName1 || 'Partner';
 
   const getStatusText = () => {
-    if (!isConnected) return 'Connecting...';
+    if (connectionMode === 'connecting' && !isConnected) return 'Connecting...';
     if (partnerTyping) return 'typing...';
     if (isPartnerOnline) return 'Online';
     if (partnerLastSeen) {
@@ -37,7 +38,7 @@ export default function ChatTopBar({ onBack, onSearch, isConnected }: ChatTopBar
       if (diffHours < 24) return `${diffHours}h ago`;
       return `Last seen ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
     }
-    return 'Offline';
+    return isConnected ? 'Online' : 'Offline';
   };
 
   return (

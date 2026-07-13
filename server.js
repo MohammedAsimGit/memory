@@ -1,18 +1,70 @@
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const next = require('next');
+const mongoose = require('mongoose');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/our-story';
+const CONVERSATION_ID = 'main';
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-const CONVERSATION_ID = 'main';
+const ChatMessageSchema = new mongoose.Schema({
+  conversationId: { type: String, default: 'main' },
+  sender: { type: String, required: true },
+  content: { type: String, default: '' },
+  type: { type: String, default: 'text' },
+  replyTo: { type: String },
+  reactions: [{ sender: String, emoji: String }],
+  isEdited: { type: Boolean, default: false },
+  isDeleted: { type: Boolean, default: false },
+  deletedFor: [{ type: String }],
+  seen: { type: Boolean, default: false },
+  delivered: { type: Boolean, default: false },
+  pinned: { type: Boolean, default: false },
+  favorited: { type: Boolean, default: false },
+  attachments: [{ url: String, type: String, name: String, size: Number, duration: Number, thumbnail: String }],
+}, { timestamps: true });
 
-app.prepare().then(() => {
-  const httpServer = createServer((req, res) => {
+let ChatMessage;
+
+async function ensureDB() {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(MONGODB_URI, {
+        bufferCommands: false,
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000,
+      });
+      console.log('[DB] Connected to MongoDB');
+    }
+    if (!ChatMessage) {
+      ChatMessage = mongoose.models.ChatMessage || mongoose.model('ChatMessage', ChatMessageSchema);
+    }
+    return true;
+  } catch (err) {
+    console.error('[DB] Connection failed:', err.message);
+    return false;
+  }
+}
+
+app.prepare().then(async () => {
+  await ensureDB();
+
+  const httpServer = createServer(async (req, res) => {
+    if (req.url === '/api/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        status: 'ok',
+        socketio: true,
+        mongo: mongoose.connection.readyState === 1,
+        uptime: process.uptime(),
+      }));
+      return;
+    }
     handle(req, res);
   });
 
@@ -20,46 +72,49 @@ app.prepare().then(() => {
     path: '/api/socketio',
     cors: { origin: '*', methods: ['GET', 'POST'] },
     transports: ['websocket', 'polling'],
-    pingTimeout: 60000,
-    pingInterval: 25000,
+    pingTimeout: 30000,
+    pingInterval: 10000,
+    allowUpgrades: true,
+    perMessageDeflate: false,
+    httpCompression: false,
   });
 
   const connectedUsers = new Map();
   const typingTimers = new Map();
 
-  function getConnectedSockets() {
-    return Array.from(connectedUsers.keys());
-  }
-
-  function getPartnerSocketId(sender) {
-    for (const [socketId, data] of connectedUsers) {
-      if (data.sender !== sender) return socketId;
+  function getPartnerSocketId(mySender) {
+    for (const [sid, data] of connectedUsers) {
+      if (data.sender !== mySender) return sid;
     }
     return null;
   }
 
-  io.on('connection', (socket) => {
-    console.log('[Socket.IO] Connected:', socket.id);
+  function broadcastOnlineStatus(cid) {
+    const senders = [];
+    for (const [, data] of connectedUsers) {
+      if (data.conversationId === cid && !senders.includes(data.sender)) {
+        senders.push(data.sender);
+      }
+    }
+    for (const [sid, data] of connectedUsers) {
+      if (data.conversationId === cid) {
+        io.to(sid).emit('onlineUsers', { senders });
+      }
+    }
+  }
+
+  io.on('connection', async (socket) => {
+    console.log('[Socket] Connected:', socket.id);
+
+    await ensureDB();
 
     socket.on('joinConversation', ({ conversationId, sender }) => {
       const cid = conversationId || CONVERSATION_ID;
       socket.join(cid);
       connectedUsers.set(socket.id, { sender: sender || 'me', conversationId: cid });
-      console.log(`[Socket.IO] ${sender} joined ${cid} (${connectedUsers.size} online)`);
+      console.log(`[Socket] ${sender} joined ${cid} (${connectedUsers.size} total)`);
 
-      const partnerSocketId = getPartnerSocketId(sender);
-      if (partnerSocketId) {
-        socket.to(cid).emit('userOnline', { sender });
-        socket.emit('userOnline', { sender: connectedUsers.get(partnerSocketId)?.sender });
-      }
-
-      const onlineSenders = [];
-      for (const [, data] of connectedUsers) {
-        if (data.conversationId === cid && !onlineSenders.includes(data.sender)) {
-          onlineSenders.push(data.sender);
-        }
-      }
-      socket.emit('onlineUsers', { senders: onlineSenders });
+      broadcastOnlineStatus(cid);
     });
 
     socket.on('leaveConversation', ({ conversationId }) => {
@@ -72,35 +127,17 @@ app.prepare().then(() => {
         });
         socket.leave(cid);
         connectedUsers.delete(socket.id);
+        broadcastOnlineStatus(cid);
       }
     });
 
     socket.on('sendMessage', async (data) => {
       try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) {
-          await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/our-story', {
-            bufferCommands: false,
-            serverSelectionTimeoutMS: 5000,
-          });
+        if (!ChatMessage) await ensureDB();
+        if (!ChatMessage) {
+          socket.emit('messageError', { error: 'Database not available' });
+          return;
         }
-
-        const ChatMessage = mongoose.models.ChatMessage || mongoose.model('ChatMessage', new mongoose.Schema({
-          conversationId: { type: String, default: 'main' },
-          sender: { type: String, required: true },
-          content: { type: String, default: '' },
-          type: { type: String, default: 'text' },
-          replyTo: { type: String },
-          reactions: [{ sender: String, emoji: String }],
-          isEdited: { type: Boolean, default: false },
-          isDeleted: { type: Boolean, default: false },
-          deletedFor: [{ type: String }],
-          seen: { type: Boolean, default: false },
-          delivered: { type: Boolean, default: false },
-          pinned: { type: Boolean, default: false },
-          favorited: { type: Boolean, default: false },
-          attachments: [{ url: String, type: String, name: String, size: Number, duration: Number, thumbnail: String }],
-        }, { timestamps: true }));
 
         const message = await ChatMessage.create({
           conversationId: data.conversationId || CONVERSATION_ID,
@@ -111,45 +148,45 @@ app.prepare().then(() => {
           attachments: data.attachments || [],
         });
 
-        const messageObj = message.toObject();
-        messageObj._id = messageObj._id.toString();
+        const msgObj = message.toObject();
+        msgObj._id = msgObj._id.toString();
 
-        const senderSid = socket.id;
+        const cid = data.conversationId || CONVERSATION_ID;
         for (const [sid, userData] of connectedUsers) {
-          if (sid !== senderSid && userData.conversationId === (data.conversationId || CONVERSATION_ID)) {
-            io.to(sid).emit('receiveMessage', messageObj);
+          if (sid !== socket.id && userData.conversationId === cid) {
+            io.to(sid).emit('receiveMessage', msgObj);
           }
         }
 
         socket.emit('messageSaved', {
           tempId: data.tempId,
-          _id: messageObj._id,
-          createdAt: messageObj.createdAt,
-          updatedAt: messageObj.updatedAt,
+          _id: msgObj._id,
+          createdAt: msgObj.createdAt,
+          updatedAt: msgObj.updatedAt,
         });
+
+        console.log(`[Socket] Message saved: ${msgObj._id} from ${data.sender}`);
       } catch (err) {
-        console.error('[Socket.IO] Error saving message:', err);
-        socket.emit('messageError', { error: 'Failed to send message' });
+        console.error('[Socket] Save error:', err.message);
+        socket.emit('messageError', { error: 'Failed to save message' });
       }
     });
 
     socket.on('typing', (data) => {
       const cid = data.conversationId || CONVERSATION_ID;
-      const sender = data.sender;
-      const key = `${cid}:${sender}`;
-
+      const key = `${cid}:${data.sender}`;
       if (typingTimers.has(key)) clearTimeout(typingTimers.get(key));
 
       for (const [sid, userData] of connectedUsers) {
         if (sid !== socket.id && userData.conversationId === cid) {
-          io.to(sid).emit('partnerTyping', { sender });
+          io.to(sid).emit('partnerTyping', { sender: data.sender });
         }
       }
 
       typingTimers.set(key, setTimeout(() => {
         for (const [sid, userData] of connectedUsers) {
           if (sid !== socket.id && userData.conversationId === cid) {
-            io.to(sid).emit('partnerStopTyping', { sender });
+            io.to(sid).emit('partnerStopTyping', { sender: data.sender });
           }
         }
         typingTimers.delete(key);
@@ -158,14 +195,14 @@ app.prepare().then(() => {
 
     socket.on('stopTyping', (data) => {
       const cid = data.conversationId || CONVERSATION_ID;
-      const sender = data.sender;
-      const key = `${cid}:${sender}`;
-      if (typingTimers.has(key)) clearTimeout(typingTimers.get(key));
-      typingTimers.delete(key);
-
+      const key = `${cid}:${data.sender}`;
+      if (typingTimers.has(key)) {
+        clearTimeout(typingTimers.get(key));
+        typingTimers.delete(key);
+      }
       for (const [sid, userData] of connectedUsers) {
         if (sid !== socket.id && userData.conversationId === cid) {
-          io.to(sid).emit('partnerStopTyping', { sender });
+          io.to(sid).emit('partnerStopTyping', { sender: data.sender });
         }
       }
     });
@@ -190,11 +227,7 @@ app.prepare().then(() => {
 
     socket.on('addReaction', async (data) => {
       try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) return;
-        const ChatMessage = mongoose.models.ChatMessage;
         if (!ChatMessage) return;
-
         const message = await ChatMessage.findById(data.messageId);
         if (!message) return;
 
@@ -210,10 +243,9 @@ app.prepare().then(() => {
         }
         await message.save();
 
+        const cid = data.conversationId || CONVERSATION_ID;
         const msgObj = message.toObject();
         msgObj._id = msgObj._id.toString();
-
-        const cid = data.conversationId || CONVERSATION_ID;
         for (const [sid, userData] of connectedUsers) {
           if (userData.conversationId === cid) {
             io.to(sid).emit('messageReactionUpdated', {
@@ -223,26 +255,22 @@ app.prepare().then(() => {
           }
         }
       } catch (err) {
-        console.error('[Socket.IO] Error adding reaction:', err);
+        console.error('[Socket] Reaction error:', err.message);
       }
     });
 
     socket.on('editMessage', async (data) => {
       try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) return;
-        const ChatMessage = mongoose.models.ChatMessage;
         if (!ChatMessage) return;
-
         const message = await ChatMessage.findByIdAndUpdate(
           data.messageId,
           { content: data.content, isEdited: true },
           { new: true }
         );
         if (message) {
+          const cid = data.conversationId || CONVERSATION_ID;
           const msgObj = message.toObject();
           msgObj._id = msgObj._id.toString();
-          const cid = data.conversationId || CONVERSATION_ID;
           for (const [sid, userData] of connectedUsers) {
             if (userData.conversationId === cid) {
               io.to(sid).emit('messageUpdated', msgObj);
@@ -250,35 +278,29 @@ app.prepare().then(() => {
           }
         }
       } catch (err) {
-        console.error('[Socket.IO] Error editing:', err);
+        console.error('[Socket] Edit error:', err.message);
       }
     });
 
     socket.on('deleteMessage', async (data) => {
       try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) return;
-        const ChatMessage = mongoose.models.ChatMessage;
         if (!ChatMessage) return;
-
         const cid = data.conversationId || CONVERSATION_ID;
         if (data.deleteFor === 'both') {
           await ChatMessage.findByIdAndDelete(data.messageId);
-          for (const [sid, userData] of connectedUsers) {
-            if (userData.conversationId === cid) {
-              io.to(sid).emit('messageDeleted', { messageId: data.messageId, deletedFor: 'both' });
-            }
-          }
         } else {
           await ChatMessage.findByIdAndUpdate(data.messageId, { $addToSet: { deletedFor: data.sender } });
-          for (const [sid, userData] of connectedUsers) {
-            if (userData.conversationId === cid) {
-              io.to(sid).emit('messageDeleted', { messageId: data.messageId, deletedFor: 'me' });
-            }
+        }
+        for (const [sid, userData] of connectedUsers) {
+          if (userData.conversationId === cid) {
+            io.to(sid).emit('messageDeleted', {
+              messageId: data.messageId,
+              deletedFor: data.deleteFor,
+            });
           }
         }
       } catch (err) {
-        console.error('[Socket.IO] Error deleting:', err);
+        console.error('[Socket] Delete error:', err.message);
       }
     });
 
@@ -291,7 +313,8 @@ app.prepare().then(() => {
           lastSeen: new Date().toISOString(),
         });
         connectedUsers.delete(socket.id);
-        console.log(`[Socket.IO] ${userData.sender} disconnected (${connectedUsers.size} online)`);
+        broadcastOnlineStatus(cid);
+        console.log(`[Socket] ${userData.sender} disconnected (${connectedUsers.size} total)`);
       }
       for (const [key, timer] of typingTimers) {
         if (key.includes(socket.id)) {
@@ -304,6 +327,7 @@ app.prepare().then(() => {
 
   httpServer.listen(port, hostname, () => {
     console.log(`\n> Ready on http://${hostname}:${port}`);
-    console.log('> Socket.IO real-time server active\n');
+    console.log(`> Socket.IO active on /api/socketio`);
+    console.log(`> Health check at /api/health\n`);
   });
 });
