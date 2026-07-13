@@ -285,29 +285,53 @@ app.prepare().then(async () => {
     });
 
     socket.on('deleteMessage', async (data) => {
+      const cid = data.conversationId || CONVERSATION_ID;
+      console.log(`[DELETE] STEP 1: DELETE REQUEST RECEIVED`);
+      console.log(`[DELETE]   messageId: ${data.messageId}`);
+      console.log(`[DELETE]   deleteFor: ${data.deleteFor}`);
+      console.log(`[DELETE]   sender: ${data.sender}`);
+      console.log(`[DELETE]   conversationId: ${cid}`);
+      console.log(`[DELETE]   socket.id: ${socket.id}`);
+
+      const roomSockets = io.sockets.adapter.rooms.get(cid);
+      console.log(`[DELETE] STEP 4: ROOM MEMBERSHIP`);
+      console.log(`[DELETE]   room: ${cid}`);
+      console.log(`[DELETE]   room exists: ${!!roomSockets}`);
+      console.log(`[DELETE]   room size: ${roomSockets ? roomSockets.size : 0}`);
+      if (roomSockets) {
+        for (const sid of roomSockets) {
+          const userData = connectedUsers.get(sid);
+          console.log(`[DELETE]   - ${sid} sender=${userData ? userData.sender : 'unknown'}${sid === socket.id ? ' (SENDER)' : ''}`);
+        }
+      }
+
       try {
         if (!ChatMessage) await ensureDB();
-        if (!ChatMessage) return;
+        if (!ChatMessage) {
+          console.log(`[DELETE]   ERROR: ChatMessage model not available`);
+          return;
+        }
 
-        const cid = data.conversationId || CONVERSATION_ID;
         if (data.deleteFor === 'both') {
-          await ChatMessage.findByIdAndDelete(data.messageId);
+          const result = await ChatMessage.findByIdAndDelete(data.messageId);
+          console.log(`[DELETE] STEP 2: MESSAGE DELETED FROM DATABASE`);
+          console.log(`[DELETE]   result: ${result ? 'found and deleted' : 'NOT FOUND'}`);
         } else {
           await ChatMessage.findByIdAndUpdate(data.messageId, { $addToSet: { deletedFor: data.sender } });
+          console.log(`[DELETE] STEP 2: MESSAGE UPDATED (soft delete for ${data.sender})`);
         }
 
-        for (const [sid, userData] of connectedUsers) {
-          if (sid !== socket.id && userData.conversationId === cid) {
-            io.to(sid).emit('messageDeleted', {
-              messageId: data.messageId,
-              deletedFor: data.deleteFor,
-            });
-          }
-        }
+        console.log(`[DELETE] STEP 3: EMITTING messageDeleted`);
+        socket.to(cid).emit('messageDeleted', {
+          messageId: data.messageId,
+          deletedFor: data.deleteFor,
+          sender: data.sender,
+        });
+        console.log(`[DELETE]   emitted to room: ${cid} (excluding self: ${socket.id})`);
 
-        console.log(`[Socket] Message deleted: ${data.messageId} (${data.deleteFor})`);
+        console.log(`[DELETE] DONE: broadcast complete`);
       } catch (err) {
-        console.error('[Socket] Delete error:', err.message);
+        console.error(`[DELETE] ERROR:`, err.message);
       }
     });
 
