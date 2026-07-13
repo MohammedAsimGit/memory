@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
 import type { ChatMessage } from '@/types/chat';
@@ -43,20 +43,20 @@ export default function LongPressMenu({ message, isOwn, onReply, onCopy, onEdit,
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50"
+        className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm"
         onClick={onClose}
       />
       <motion.div
-        initial={{ opacity: 0, scale: 0.85, y: 10 }}
+        initial={{ opacity: 0, scale: 0.9, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.85, y: 10 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-        className={`fixed z-50 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden ${
+        exit={{ opacity: 0, scale: 0.9, y: 8 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+        className={`fixed z-50 w-52 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl border border-slate-100 dark:border-white/[0.08] overflow-hidden ${
           isOwn ? 'right-4' : 'left-4'
         }`}
         style={{ top: '50%', transform: 'translateY(-50%)' }}
       >
-        <div className="p-1.5">
+        <div className="p-1">
           {menuItems.map((item, i) => (
             <button
               key={i}
@@ -64,10 +64,10 @@ export default function LongPressMenu({ message, isOwn, onReply, onCopy, onEdit,
                 item.action();
                 onClose();
               }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl active:bg-slate-50 dark:active:bg-white/5 transition-colors text-left"
             >
-              <span className="text-[15px]">{item.icon}</span>
-              <span className="text-[14px] text-slate-700 dark:text-slate-200">{item.label}</span>
+              <span className="text-[14px]">{item.icon}</span>
+              <span className="text-[13px] text-slate-700 dark:text-slate-200">{item.label}</span>
             </button>
           ))}
         </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, PanInfo } from 'framer-motion';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useSocket } from '@/hooks/useSocket';
@@ -47,6 +47,21 @@ export default function ChatPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const oldestDateRef = useRef<string | null>(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX < -80 && Math.abs(deltaY) < 60) {
+      router.push('/home');
+    }
+  }, [router]);
 
   const scrollToBottom = useCallback((smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' });
@@ -199,7 +214,11 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col">
+    <div
+      className="fixed inset-0 z-50 bg-white dark:bg-[#090909] flex flex-col"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <ChatTopBar
         onBack={() => router.push('/home')}
         onSearch={() => setShowSearch(!showSearch)}
@@ -208,19 +227,34 @@ export default function ChatPage() {
       />
 
       <div
-        className="flex-1 overflow-y-auto scrollbar-thin"
+        className="flex-1 overflow-y-auto"
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 60px)',
+          background: 'linear-gradient(180deg, rgba(240,245,250,1) 0%, rgba(255,255,255,1) 100%)',
+        }}
       >
-        <div className="px-4 py-2 max-w-2xl mx-auto">
+        <style>{`
+          @media (prefers-color-scheme: dark) {
+            .chat-scroll-area {
+              background: linear-gradient(180deg, #0a0a0a 0%, #090909 100%) !important;
+            }
+          }
+        `}</style>
+        <div
+          className="chat-scroll-area px-3 py-3 max-w-2xl mx-auto"
+          style={{
+            background: 'inherit',
+          }}
+        >
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="flex gap-1">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-bounce"
+                    className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
                     style={{ animationDelay: `${i * 150}ms` }}
                   />
                 ))}
@@ -245,7 +279,7 @@ export default function ChatPage() {
                 const showTail = shouldShowTail(msg, prevMsg);
 
                 return (
-                  <div key={msg._id}>
+                  <div key={msg._id} id={msg._id}>
                     {showDate && <DateSeparator date={msg.createdAt} />}
                     <MessageBubble
                       message={msg}

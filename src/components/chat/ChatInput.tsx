@@ -21,7 +21,7 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
   useEffect(() => {
     if (editingMessage) {
       setInput(editingMessage.content);
-      textareaRef.current?.focus();
+      setTimeout(() => textareaRef.current?.focus(), 50);
     }
   }, [editingMessage]);
 
@@ -51,7 +51,11 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
 
     setInput('');
     onStopTyping();
-    textareaRef.current?.style.setProperty('height', '44px');
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '40px';
+      textareaRef.current.focus();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -94,7 +98,7 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
 
   const handleInputHeight = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textarea = e.target;
-    textarea.style.height = '44px';
+    textarea.style.height = '40px';
     textarea.style.height = Math.min(textarea.scrollHeight, 96) + 'px';
   };
 
@@ -108,13 +112,13 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700/50 flex items-center gap-3">
-              <div className="w-0.5 h-8 rounded-full bg-blue-500" />
+            <div className="px-4 py-2 bg-slate-50/80 dark:bg-white/[0.03] border-t border-slate-200/40 dark:border-white/[0.06] flex items-center gap-3">
+              <div className="w-[3px] h-8 rounded-full bg-gradient-to-b from-[#5B9BF5] to-[#3478F6]" />
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-medium text-blue-500">
+                <p className="text-[11px] font-semibold text-[#3478F6] dark:text-[#5B9BF5]">
                   {editingMessage ? 'Editing message' : `Replying to ${replyingTo?.sender === 'me' ? 'yourself' : 'partner'}`}
                 </p>
-                <p className="text-[12px] text-slate-500 dark:text-slate-400 truncate">
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 truncate leading-snug">
                   {editingMessage?.content || replyingTo?.content}
                 </p>
               </div>
@@ -124,9 +128,9 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
                   setEditingMessage(null);
                   setInput('');
                 }}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700"
+                className="w-7 h-7 rounded-full flex items-center justify-center active:bg-slate-200 dark:active:bg-white/10 transition-colors"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -136,7 +140,10 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
         )}
       </AnimatePresence>
 
-      <div className="px-3 py-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}>
+      <div
+        className="px-3 pt-2 pb-1 bg-white/80 dark:bg-[#0a0a0a]/90 backdrop-blur-2xl border-t border-slate-200/40 dark:border-white/[0.06]"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)' }}
+      >
         <div className="flex items-end gap-2">
           <input
             type="file"
@@ -147,17 +154,17 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
           />
 
           <motion.button
-            whileTap={{ scale: 0.9 }}
+            whileTap={{ scale: 0.85 }}
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+            className="flex-shrink-0 w-[38px] h-[38px] rounded-full flex items-center justify-center active:bg-black/5 dark:active:bg-white/5 transition-colors disabled:opacity-50 mb-[1px]"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 dark:text-slate-400">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 dark:text-slate-500">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
             </svg>
           </motion.button>
 
-          <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden">
+          <div className="flex-1 bg-slate-100 dark:bg-white/[0.06] rounded-[20px] border border-slate-200/50 dark:border-white/[0.08] overflow-hidden min-h-[40px] flex items-center">
             <textarea
               ref={textareaRef}
               value={input}
@@ -168,8 +175,8 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
               onKeyDown={handleKeyDown}
               placeholder="Message..."
               rows={1}
-              className="w-full px-4 py-2.5 text-[15px] text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 bg-transparent resize-none outline-none max-h-24 scrollbar-none"
-              style={{ height: '44px' }}
+              className="w-full px-3.5 py-[9px] text-[15px] text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 bg-transparent resize-none outline-none max-h-24 scrollbar-none leading-[1.3]"
+              style={{ height: '40px' }}
             />
           </div>
 
@@ -183,9 +190,9 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
                 transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                 whileTap={{ scale: 0.85 }}
                 onClick={handleSend}
-                className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-[#4FC3F7] to-[#1976D2] flex items-center justify-center shadow-md shadow-blue-400/30"
+                className="flex-shrink-0 w-[38px] h-[38px] rounded-full bg-gradient-to-br from-[#5B9BF5] to-[#3478F6] flex items-center justify-center shadow-md shadow-blue-500/25 mb-[1px]"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
@@ -198,9 +205,9 @@ export default function ChatInput({ onSend, onTyping, onStopTyping }: ChatInputP
                 exit={{ scale: 0.5, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                 whileTap={{ scale: 0.85 }}
-                className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="flex-shrink-0 w-[38px] h-[38px] rounded-full flex items-center justify-center active:bg-black/5 dark:active:bg-white/5 transition-colors mb-[1px]"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 dark:text-slate-400">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 dark:text-slate-500">
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
                   <line x1="12" y1="19" x2="12" y2="23" />
