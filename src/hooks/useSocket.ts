@@ -1,16 +1,15 @@
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { getSocket } from '@/lib/socket';
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
 import type { ChatMessage } from '@/types/chat';
 
-let socketConnected = false;
-
 export function useSocket() {
   const socket = getSocket();
   const activeProfile = useAuthStore((s) => s.activeProfile);
+  const [isConnected, setIsConnected] = useState(false);
   const {
     addMessage,
     updateMessage,
@@ -20,22 +19,51 @@ export function useSocket() {
     setPartnerTyping,
   } = useChatStore();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingTempIds = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     const handleConnect = () => {
-      socketConnected = true;
-      socket.emit('joinConversation', 'main');
+      setIsConnected(true);
+      socket.emit('joinConversation', {
+        conversationId: 'main',
+        sender: activeProfile || 'me',
+      });
     };
 
     const handleDisconnect = () => {
-      socketConnected = false;
+      setIsConnected(false);
     };
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
 
+    socket.on('messageSaved', (data: { tempId: string; _id: string; createdAt: string; updatedAt: string }) => {
+      const realId = data._id;
+      const tempId = data.tempId;
+
+      const currentMessages = useChatStore.getState().messages;
+      const tempMsg = currentMessages.find((m) => m._id === tempId);
+
+      if (tempMsg) {
+        updateMessage(tempId, {
+          _id: realId,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        });
+      }
+
+      const duplicate = currentMessages.find((m) => m._id === realId && m._id !== tempId);
+      if (duplicate) {
+        removeMessage(tempId);
+      }
+    });
+
     socket.on('receiveMessage', (message: ChatMessage) => {
-      addMessage(message);
+      const currentMessages = useChatStore.getState().messages;
+      const exists = currentMessages.find((m) => m._id === message._id);
+      if (!exists) {
+        addMessage(message);
+      }
       socket.emit('messageDelivered', { messageId: message._id, conversationId: 'main' });
     });
 
@@ -63,45 +91,64 @@ export function useSocket() {
       updateMessage(data.messageId, { reactions: data.reactions });
     });
 
-    socket.on('partnerOnline', () => {
-      setIsPartnerOnline(true);
+    socket.on('userOnline', (data: { sender: string }) => {
+      if (data.sender !== (activeProfile || 'me')) {
+        setIsPartnerOnline(true);
+      }
     });
 
-    socket.on('partnerOffline', (data: { lastSeen: string }) => {
-      setIsPartnerOnline(false);
-      setPartnerLastSeen(data.lastSeen);
+    socket.on('userOffline', (data: { sender: string; lastSeen: string }) => {
+      if (data.sender !== (activeProfile || 'me')) {
+        setIsPartnerOnline(false);
+        setPartnerLastSeen(data.lastSeen);
+      }
     });
 
-    socket.on('partnerTyping', () => {
-      setPartnerTyping(true);
+    socket.on('onlineUsers', (data: { senders: string[] }) => {
+      const mySender = activeProfile || 'me';
+      const partnerOnline = data.senders.some((s) => s !== mySender);
+      setIsPartnerOnline(partnerOnline);
     });
 
-    socket.on('partnerStopTyping', () => {
-      setPartnerTyping(false);
+    socket.on('partnerTyping', (data: { sender: string }) => {
+      if (data.sender !== (activeProfile || 'me')) {
+        setPartnerTyping(true);
+      }
     });
 
-    socket.on('connect_error', () => {
-      socketConnected = false;
-      setIsPartnerOnline(false);
+    socket.on('partnerStopTyping', (data: { sender: string }) => {
+      if (data.sender !== (activeProfile || 'me')) {
+        setPartnerTyping(false);
+      }
     });
 
-    socket.connect();
+    socket.on('messageError', (data: { error: string }) => {
+      console.error('[Socket] Message error:', data.error);
+    });
+
+    if (!socket.connected) {
+      socket.connect();
+    } else {
+      handleConnect();
+    }
 
     return () => {
-      socket.emit('leaveConversation', 'main');
+      socket.emit('leaveConversation', { conversationId: 'main' });
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
+      socket.off('messageSaved');
       socket.off('receiveMessage');
       socket.off('messageUpdated');
       socket.off('messageDeleted');
       socket.off('messageSeen');
       socket.off('messageDelivered');
       socket.off('messageReactionUpdated');
-      socket.off('partnerOnline');
-      socket.off('partnerOffline');
+      socket.off('userOnline');
+      socket.off('userOffline');
+      socket.off('onlineUsers');
       socket.off('partnerTyping');
       socket.off('partnerStopTyping');
-      socket.off('connect_error');
+      socket.off('messageError');
     };
   }, [activeProfile, addMessage, updateMessage, removeMessage, setIsPartnerOnline, setPartnerLastSeen, setPartnerTyping]);
 
@@ -132,38 +179,38 @@ export function useSocket() {
     addMessage(optimisticMessage);
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (socket.connected) {
+        socket.emit('sendMessage', {
+          conversationId: 'main',
           sender,
           content: data.content || '',
           type: data.type || 'text',
           replyTo: data.replyTo,
           attachments: data.attachments || [],
-        }),
-      });
+          tempId,
+        });
+      } else {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender,
+            content: data.content || '',
+            type: data.type || 'text',
+            replyTo: data.replyTo,
+            attachments: data.attachments || [],
+          }),
+        });
 
-      if (!res.ok) throw new Error('Failed to send');
+        if (!res.ok) throw new Error('Failed to send');
 
-      const savedMessage: ChatMessage = await res.json();
-
-      updateMessage(tempId, {
-        _id: savedMessage._id,
-        createdAt: savedMessage.createdAt,
-        updatedAt: savedMessage.updatedAt,
-      });
-
-      if (socketConnected) {
-        socket.emit('sendMessage', {
-          conversationId: 'main',
-          sender,
-          ...data,
+        const savedMessage: ChatMessage = await res.json();
+        updateMessage(tempId, {
           _id: savedMessage._id,
+          createdAt: savedMessage.createdAt,
+          updatedAt: savedMessage.updatedAt,
         });
       }
-
-      return savedMessage;
     } catch (err) {
       removeMessage(tempId);
       throw err;
@@ -171,7 +218,7 @@ export function useSocket() {
   }, [activeProfile, addMessage, updateMessage, removeMessage]);
 
   const startTyping = useCallback(() => {
-    if (!socketConnected) return;
+    if (!socket.connected) return;
     socket.emit('typing', { conversationId: 'main', sender: activeProfile || 'me' });
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
@@ -180,19 +227,18 @@ export function useSocket() {
   }, [activeProfile]);
 
   const stopTyping = useCallback(() => {
-    if (!socketConnected) return;
+    if (!socket.connected) return;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     socket.emit('stopTyping', { conversationId: 'main', sender: activeProfile || 'me' });
   }, [activeProfile]);
 
   const markSeen = useCallback((messageId: string) => {
-    if (!socketConnected) return;
+    if (!socket.connected) return;
     socket.emit('messageSeen', { messageId, conversationId: 'main' });
   }, []);
 
   const sendReaction = useCallback(async (messageId: string, emoji: string) => {
     const sender = activeProfile || 'me';
-
     const msg = useChatStore.getState().messages.find((m) => m._id === messageId);
     if (!msg) return;
 
@@ -233,7 +279,7 @@ export function useSocket() {
         body: JSON.stringify({ content, isEdited: true }),
       });
 
-      if (socketConnected) {
+      if (socket.connected) {
         socket.emit('editMessage', { messageId, conversationId: 'main', content });
       }
     } catch (err) {
@@ -252,11 +298,8 @@ export function useSocket() {
     }
 
     try {
-      await fetch(`/api/chat/${messageId}?deleteFor=${deleteFor}`, {
-        method: 'DELETE',
-      });
-
-      if (socketConnected) {
+      await fetch(`/api/chat/${messageId}?deleteFor=${deleteFor}`, { method: 'DELETE' });
+      if (socket.connected) {
         socket.emit('deleteMessage', { messageId, conversationId: 'main', deleteFor });
       }
     } catch (err) {
@@ -268,5 +311,15 @@ export function useSocket() {
     }
   }, [removeMessage, updateMessage, addMessage]);
 
-  return { sendMessage, startTyping, stopTyping, markSeen, sendReaction, editMessage, deleteMessage, socket };
+  return {
+    sendMessage,
+    startTyping,
+    stopTyping,
+    markSeen,
+    sendReaction,
+    editMessage,
+    deleteMessage,
+    isConnected,
+    socket,
+  };
 }

@@ -9,9 +9,10 @@ import type { Settings } from '@/types';
 interface ChatTopBarProps {
   onBack: () => void;
   onSearch: () => void;
+  isConnected: boolean;
 }
 
-export default function ChatTopBar({ onBack, onSearch }: ChatTopBarProps) {
+export default function ChatTopBar({ onBack, onSearch, isConnected }: ChatTopBarProps) {
   const { isPartnerOnline, partnerLastSeen, partnerTyping } = useChatStore();
   const activeProfile = useAuthStore((s) => s.activeProfile);
   const { data: settings } = useApi<Settings>('/settings');
@@ -21,6 +22,7 @@ export default function ChatTopBar({ onBack, onSearch }: ChatTopBarProps) {
     : settings?.partnerName1 || 'Partner';
 
   const getStatusText = () => {
+    if (!isConnected) return 'Connecting...';
     if (partnerTyping) return 'typing...';
     if (isPartnerOnline) return 'Online';
     if (partnerLastSeen) {
@@ -33,7 +35,7 @@ export default function ChatTopBar({ onBack, onSearch }: ChatTopBarProps) {
       if (diffMins < 60) return `${diffMins}m ago`;
       const diffHours = Math.floor(diffMins / 60);
       if (diffHours < 24) return `${diffHours}h ago`;
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `Last seen ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
     }
     return 'Offline';
   };
@@ -67,7 +69,9 @@ export default function ChatTopBar({ onBack, onSearch }: ChatTopBarProps) {
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             className={`text-[12px] ${
-              partnerTyping
+              !isConnected
+                ? 'text-amber-500'
+                : partnerTyping
                 ? 'text-blue-500'
                 : isPartnerOnline
                 ? 'text-emerald-500'
