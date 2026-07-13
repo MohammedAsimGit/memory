@@ -37,9 +37,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (isHome && swipeDistance < 0) {
+      if (isHome && swipeDistance > 0) {
         router.push('/chat');
-      } else if (isChat && swipeDistance > 0) {
+      } else if (isChat && swipeDistance < 0) {
         router.push('/home');
       } else {
         animate(x, 0, { type: 'spring', stiffness: 300, damping: 30 });
