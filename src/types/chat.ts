@@ -43,6 +43,7 @@ export interface ChatState {
   viewerImages: string[];
   viewerIndex: number;
   setMessages: (messages: ChatMessage[]) => void;
+  prependMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
   updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
   removeMessage: (id: string) => void;

@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useSocket } from '@/hooks/useSocket';
+import { useToast } from '@/hooks/useToast';
 import { useApi } from '@/hooks/useApi';
 import type { Settings } from '@/types';
 import type { ChatMessage } from '@/types/chat';
@@ -22,9 +23,11 @@ export default function ChatPage() {
   const router = useRouter();
   const activeProfile = useAuthStore((s) => s.activeProfile);
   const { data: settings } = useApi<Settings>('/settings');
+  const { addToast, ToastContainer } = useToast();
   const {
     messages,
     setMessages,
+    prependMessages,
     isLoading,
     setIsLoading,
     partnerTyping,
@@ -40,6 +43,7 @@ export default function ChatPage() {
   const { sendMessage, startTyping, stopTyping, markSeen, sendReaction, editMessage, deleteMessage } = useSocket();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const oldestDateRef = useRef<string | null>(null);
@@ -59,7 +63,7 @@ export default function ChatPage() {
       if (data.length < 30) setHasMore(false);
 
       if (before) {
-        setMessages([...data, ...messages]);
+        prependMessages(data);
       } else {
         setMessages(data);
         if (data.length > 0) {
@@ -72,17 +76,30 @@ export default function ChatPage() {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [messages, setMessages]);
+  }, [setMessages, prependMessages]);
 
   useEffect(() => {
     fetchMessages();
   }, []);
 
   useEffect(() => {
-    if (!isLoading && messages.length > 0) {
+    if (!isLoading && messages.length > 0 && prevMessageCountRef.current === 0) {
       setTimeout(() => scrollToBottom(false), 100);
     }
-  }, [isLoading]);
+    prevMessageCountRef.current = messages.length;
+  }, [isLoading, messages.length, scrollToBottom]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      const container = scrollContainerRef.current;
+      if (container) {
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        if (isNearBottom) {
+          setTimeout(() => scrollToBottom(true), 50);
+        }
+      }
+    }
+  }, [messages.length, scrollToBottom]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -107,9 +124,14 @@ export default function ChatPage() {
     }
   }, [hasMore, isLoadingMore, handleLoadMore]);
 
-  const handleSend = useCallback((data: { content: string; type?: string; replyTo?: string; attachments?: any[] }) => {
-    sendMessage(data);
-  }, [sendMessage]);
+  const handleSend = useCallback(async (data: { content: string; type?: string; replyTo?: string; attachments?: any[] }) => {
+    try {
+      await sendMessage(data);
+      setTimeout(() => scrollToBottom(true), 50);
+    } catch (err) {
+      addToast('Message failed to send. Tap to retry.', 'error');
+    }
+  }, [sendMessage, scrollToBottom, addToast]);
 
   const handleLongPress = useCallback((msg: ChatMessage) => {
     setSelectedMessage(msg);
@@ -280,6 +302,7 @@ export default function ChatPage() {
       </AnimatePresence>
 
       <ImageViewer />
+      <ToastContainer />
     </div>
   );
 }

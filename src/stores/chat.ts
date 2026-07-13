@@ -20,6 +20,11 @@ export const useChatStore = create<ChatState>()((set) => ({
   viewerIndex: 0,
 
   setMessages: (messages) => set({ messages }),
+  prependMessages: (messages) => set((s) => {
+    const existing = new Set(s.messages.map((m) => m._id));
+    const newMsgs = messages.filter((m) => !existing.has(m._id));
+    return { messages: [...newMsgs, ...s.messages] };
+  }),
   addMessage: (message) => set((s) => {
     if (s.messages.find((m) => m._id === message._id)) return s;
     return { messages: [...s.messages, message] };
