@@ -8,13 +8,6 @@ import CloudBackground from './CloudBackground';
 import AppTopBar from './AppTopBar';
 import CreateBottomSheet from './CreateBottomSheet';
 
-type SwipePage = 'chat' | 'home' | 'timeline';
-const SWIPE_PAGES: SwipePage[] = ['chat', 'home', 'timeline'];
-const PAGE_ROUTES: Record<SwipePage, string> = {
-  chat: '/chat',
-  home: '/home',
-  timeline: '/timeline',
-};
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 300;
 
@@ -25,43 +18,43 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const x = useMotionValue(0);
   const isDragging = useRef(false);
 
-  const currentSegment = (pathname?.split('/')[1] || 'home') as SwipePage;
-  const isSwipePage = SWIPE_PAGES.includes(currentSegment);
-  const currentIndex = SWIPE_PAGES.indexOf(currentSegment);
+  const currentSegment = pathname?.split('/')[1] || 'home';
+  const isHome = currentSegment === 'home';
+  const isChat = currentSegment === 'chat';
 
   const handleDragEnd = useCallback(
     (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
       isDragging.current = false;
-      if (!isSwipePage) return;
 
       const swipeDistance = info.offset.x;
       const swipeVelocity = info.velocity.x;
 
-      let targetIndex = currentIndex;
+      const isHorizontalSwipe =
+        Math.abs(swipeDistance) > SWIPE_THRESHOLD || Math.abs(swipeVelocity) > VELOCITY_THRESHOLD;
 
-      if (Math.abs(swipeDistance) > SWIPE_THRESHOLD || Math.abs(swipeVelocity) > VELOCITY_THRESHOLD) {
-        if (swipeDistance > 0 && currentIndex > 0) {
-          targetIndex = currentIndex - 1;
-        } else if (swipeDistance < 0 && currentIndex < SWIPE_PAGES.length - 1) {
-          targetIndex = currentIndex + 1;
-        }
+      if (!isHorizontalSwipe) {
+        animate(x, 0, { type: 'spring', stiffness: 300, damping: 30 });
+        return;
       }
 
-      const targetPage = SWIPE_PAGES[targetIndex];
-      if (targetPage !== currentSegment) {
-        router.push(PAGE_ROUTES[targetPage]);
+      if (isHome && swipeDistance < 0) {
+        router.push('/chat');
+      } else if (isChat && swipeDistance > 0) {
+        router.push('/home');
       } else {
         animate(x, 0, { type: 'spring', stiffness: 300, damping: 30 });
       }
     },
-    [currentIndex, currentSegment, isSwipePage, router, x]
+    [isHome, isChat, router, x]
   );
 
   const handleDragStart = useCallback(() => {
     isDragging.current = true;
   }, []);
 
-  const content = isSwipePage ? (
+  const isSwipeEnabled = isHome || isChat;
+
+  const content = isSwipeEnabled ? (
     <motion.div
       style={{ x }}
       drag="x"
@@ -94,24 +87,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {content}
         </motion.main>
       </AnimatePresence>
-
-      {isSwipePage && (
-        <div className="fixed bottom-20 left-0 right-0 flex justify-center gap-1.5 z-30 pointer-events-none">
-          {SWIPE_PAGES.map((page, i) => (
-            <motion.div
-              key={page}
-              animate={{
-                scale: i === currentIndex ? 1 : 0.6,
-                opacity: i === currentIndex ? 1 : 0.3,
-              }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className={`w-1.5 h-1.5 rounded-full ${
-                i === currentIndex ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-600'
-              }`}
-            />
-          ))}
-        </div>
-      )}
 
       <AnimatePresence>
         {fabOpen && <CreateBottomSheet isOpen={fabOpen} onClose={() => setFabOpen(false)} />}
