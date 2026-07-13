@@ -325,15 +325,21 @@ export function useSocket() {
     else updateMessage(messageId, { isDeleted: true });
 
     try {
-      await fetch(`/api/chat/${messageId}?deleteFor=${deleteFor}`, { method: 'DELETE' });
       if (socket.connected) {
-        socket.emit('deleteMessage', { messageId, conversationId: 'main', deleteFor });
+        socket.emit('deleteMessage', {
+          messageId,
+          conversationId: 'main',
+          sender: mySender,
+          deleteFor,
+        });
+      } else {
+        await fetch(`/api/chat/${messageId}?deleteFor=${deleteFor}`, { method: 'DELETE' });
       }
     } catch {
       if (deleteFor === 'both') addMessage(msg);
       else updateMessage(messageId, { isDeleted: false });
     }
-  }, [removeMessage, updateMessage, addMessage]);
+  }, [mySender, removeMessage, updateMessage, addMessage]);
 
   return {
     sendMessage,

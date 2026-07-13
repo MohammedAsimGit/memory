@@ -261,7 +261,9 @@ app.prepare().then(async () => {
 
     socket.on('editMessage', async (data) => {
       try {
+        if (!ChatMessage) await ensureDB();
         if (!ChatMessage) return;
+
         const message = await ChatMessage.findByIdAndUpdate(
           data.messageId,
           { content: data.content, isEdited: true },
@@ -272,7 +274,7 @@ app.prepare().then(async () => {
           const msgObj = message.toObject();
           msgObj._id = msgObj._id.toString();
           for (const [sid, userData] of connectedUsers) {
-            if (userData.conversationId === cid) {
+            if (sid !== socket.id && userData.conversationId === cid) {
               io.to(sid).emit('messageUpdated', msgObj);
             }
           }
@@ -284,21 +286,26 @@ app.prepare().then(async () => {
 
     socket.on('deleteMessage', async (data) => {
       try {
+        if (!ChatMessage) await ensureDB();
         if (!ChatMessage) return;
+
         const cid = data.conversationId || CONVERSATION_ID;
         if (data.deleteFor === 'both') {
           await ChatMessage.findByIdAndDelete(data.messageId);
         } else {
           await ChatMessage.findByIdAndUpdate(data.messageId, { $addToSet: { deletedFor: data.sender } });
         }
+
         for (const [sid, userData] of connectedUsers) {
-          if (userData.conversationId === cid) {
+          if (sid !== socket.id && userData.conversationId === cid) {
             io.to(sid).emit('messageDeleted', {
               messageId: data.messageId,
               deletedFor: data.deleteFor,
             });
           }
         }
+
+        console.log(`[Socket] Message deleted: ${data.messageId} (${data.deleteFor})`);
       } catch (err) {
         console.error('[Socket] Delete error:', err.message);
       }
